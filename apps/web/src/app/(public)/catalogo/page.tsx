@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { apiGet } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,16 +21,12 @@ export default function CatalogoPage() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ["products", search, page, activeCategory],
     queryFn: () => {
-      let url = `/api/products?page=${page}&limit=12&search=${search}`;
-      // In a real app, we'd pass category to the backend. For now, we simulate it.
+      const categoryParam = activeCategory !== "Todos" ? `&category=${encodeURIComponent(activeCategory)}` : "";
+      const url = `/api/products?page=${page}&limit=12&search=${encodeURIComponent(search)}${categoryParam}`;
       return apiGet(url);
     },
   });
-
-  // Client-side filtering just for the mockup if backend doesn't support category filtering yet
-  const filteredProducts = data?.data?.filter((p: any) => 
-    activeCategory === "Todos" || p.category?.name === activeCategory
-  ) || [];
+  const filteredProducts = data?.data || [];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col">
@@ -149,11 +146,7 @@ export default function CatalogoPage() {
                   <Link key={product.id} href={`/catalogo/${product.id}`} className="group">
                     <div className="aspect-[4/5] bg-slate-100 rounded-2xl mb-4 overflow-hidden relative border border-slate-200/50">
                       {product.images?.[0] ? (
-                        <img 
-                          src={product.images[0].url} 
-                          alt={product.name} 
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        />
+                        <Image src={product.images[0].url} alt={product.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover group-hover:scale-105 transition-transform duration-500" unoptimized />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center text-6xl group-hover:scale-110 transition-transform duration-500">
                           👕

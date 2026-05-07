@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft, Lock, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -185,7 +186,7 @@ export default function CheckoutPage() {
                     <div className="relative">
                       <div className="w-16 h-16 bg-white border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center text-xl shadow-sm">
                         {product?.images?.[0] ? (
-                          <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
+                          <Image src={product.images[0].url} alt={product?.name || "Producto"} fill sizes="64px" className="object-cover" unoptimized />
                         ) : (
                           "👕"
                         )}

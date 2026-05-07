@@ -2,6 +2,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, use } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { apiGet, apiPost } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         <div className="space-y-4">
           <div className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative border border-slate-200 shadow-sm">
             {product.images?.[0] ? (
-              <img src={product.images[0].url} alt={product.name} className="w-full h-full object-cover" />
+              <Image src={product.images[0].url} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-9xl bg-gradient-to-br from-slate-100 to-slate-200">
                 👕

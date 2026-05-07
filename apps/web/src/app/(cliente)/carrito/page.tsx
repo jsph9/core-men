@@ -4,6 +4,7 @@ import { apiGet, apiPut, apiDelete } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Trash2, Minus, Plus, ChevronLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -112,7 +113,7 @@ export default function CarritoPage() {
                       <Link href={`/catalogo/${product?.id}`} className="shrink-0">
                         <div className="w-24 h-32 bg-slate-100 rounded-xl overflow-hidden relative">
                           {product?.images?.[0] ? (
-                            <img src={product.images[0].url} alt={product?.name} className="w-full h-full object-cover" />
+                            <Image src={product.images[0].url} alt={product?.name || "Producto"} fill sizes="96px" className="object-cover" unoptimized />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-3xl">👕</div>
                           )}

@@ -6,7 +6,7 @@ Plataforma integral de comercio electrónico diseñada para el sector textil (Mo
 
 El proyecto está estructurado como un **Monorepo** dividido en dos aplicaciones principales:
 
-- `apps/web`: Frontend desarrollado con **Next.js 14+ (App Router)**, **React 18+**, **Tailwind CSS** y componentes de **shadcn/ui**.
+- `apps/web`: Frontend desarrollado con **Next.js 16 (App Router)**, **React 19**, **Tailwind CSS** y componentes de **shadcn/ui**.
 - `apps/api`: Backend desarrollado con **Node.js**, **Express**, **TypeScript** y **Prisma ORM** conectado a una base de datos **PostgreSQL**.
 
 ## Funcionalidades Principales
@@ -37,7 +37,9 @@ El proyecto está estructurado como un **Monorepo** dividido en dos aplicaciones
    ```
 
 2. Configurar variables de entorno (`.env`):
-   Asegúrate de copiar el archivo `.env.example` a `.env` y llenar las credenciales de la base de datos y Stripe.
+   - Copia `.env.example` a `apps/api/.env` para variables del backend.
+   - Crea `apps/web/.env.local` para variables del frontend público.
+   - Evita versionar archivos `.env*` con secretos.
 
 3. Inicializar la base de datos (Prisma):
    ```bash
@@ -49,5 +51,12 @@ El proyecto está estructurado como un **Monorepo** dividido en dos aplicaciones
    ```bash
    npm run dev
    ```
-   - Frontend disponible en: `http://localhost:3000`
-   - Backend API disponible en: `http://localhost:3001`
+    - Frontend disponible en: `http://localhost:3000`
+    - Backend API disponible en: `http://localhost:3001`
+
+## Scripts de Calidad y Pruebas
+
+- `npm run lint:web`: ejecuta lint en la app web.
+- `npm run build`: compila API y Web.
+- `npm run test:http`: prueba HTTP rápida contra API local.
+- `npm run test:e2e`: flujo E2E básico (login admin + creación de producto) contra API local.

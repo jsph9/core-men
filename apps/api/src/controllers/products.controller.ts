@@ -11,7 +11,12 @@ export const getProducts = async (req: Request, res: Response) => {
     const whereClause: any = { isActive: true };
     
     if (category) {
-      whereClause.categoryId = category as string;
+      whereClause.category = {
+        name: {
+          equals: category as string,
+          mode: 'insensitive'
+        }
+      };
     }
     
     if (search) {
