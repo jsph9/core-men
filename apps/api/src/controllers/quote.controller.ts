@@ -47,6 +47,31 @@ export const createQuote = async (req: Request, res: Response) => {
   }
 };
 
+// Comerciante - Obtener todas las cotizaciones
+export const getMerchantQuotes = async (_req: Request, res: Response) => {
+  try {
+    const quotes = await prisma.quote.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        client: {
+          select: { name: true, email: true }
+        },
+        items: {
+          include: {
+            productVariant: {
+              include: { product: true, size: true }
+            }
+          }
+        }
+      }
+    });
+    res.json(quotes);
+  } catch (error) {
+    console.error('Get merchant quotes error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 // Comerciante - Responder con precio
 export const respondToQuote = async (req: Request, res: Response) => {
   try {

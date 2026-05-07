@@ -29,7 +29,7 @@ export default function LoginPage() {
       setError("");
       const res = await apiPost<{ role: string }>("/api/auth/login", data);
       if (res.role === "ADMIN") router.push("/dashboard");
-      else if (res.role === "MERCHANT") router.push("/comerciante/cotizaciones");
+      else if (res.role === "MERCHANT") router.push("/gestion-cotizaciones");
       else router.push("/catalogo");
     } catch (err: any) {
       setError(err.message || "Error al iniciar sesión");
