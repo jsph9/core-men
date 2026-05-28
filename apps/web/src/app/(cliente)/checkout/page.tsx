@@ -73,6 +73,8 @@ function CheckoutForm({ amount }: { amount: number }) {
 export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState("");
   const [sessionError, setSessionError] = useState("");
+  const [receiptType, setReceiptType] = useState<"boleta" | "factura">("boleta");
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "debit" | "yape">("card");
 
   const { data: cart, isLoading: isCartLoading } = useQuery<any>({ 
     queryKey: ["cart"], 
@@ -81,7 +83,7 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    apiPost<{ clientSecret: string }>("/api/checkout/session", {})
+    apiPost<{ clientSecret: string }>("/api/checkout/session", { receiptType, paymentMethod })
       .then((res) => setClientSecret(res.clientSecret))
       .catch((err) => {
         setSessionError(err.message || "Error al iniciar sesión de pago");
@@ -89,7 +91,7 @@ export default function CheckoutPage() {
           // Cart is empty, redirect handled below
         }
       });
-  }, []);
+  }, [receiptType, paymentMethod]);
 
   if (sessionError) {
     return (
@@ -148,6 +150,32 @@ export default function CheckoutPage() {
             <div className="mb-10">
               <h1 className="text-2xl font-bold text-slate-900">Pago Seguro</h1>
               <p className="text-slate-500 text-sm mt-1">Ingresa tus datos para completar tu pedido.</p>
+            </div>
+
+            <div className="mb-6 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Tipo de comprobante</label>
+                <select
+                  value={receiptType}
+                  onChange={(e) => setReceiptType(e.target.value as "boleta" | "factura")}
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                >
+                  <option value="boleta">Boleta</option>
+                  <option value="factura">Factura</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Método de pago</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as "card" | "debit" | "yape")}
+                  className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                >
+                  <option value="card">Tarjeta de crédito</option>
+                  <option value="debit">Tarjeta de débito</option>
+                  <option value="yape">Yape</option>
+                </select>
+              </div>
             </div>
             
             <Elements stripe={stripePromise} options={{ 

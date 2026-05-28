@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   Package, 
@@ -16,7 +16,10 @@ import {
   UserCircle
 } from "lucide-react";
 import { useState } from "react";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet, apiPost } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -31,7 +34,35 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const { data: me, isLoading } = useQuery<{ name: string; email: string; role: string }>({
+    queryKey: ["me-admin-layout"],
+    queryFn: () => apiGet("/api/auth/me"),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!isLoading && (!me || me.role !== "ADMIN")) {
+      router.replace("/auth/login");
+    }
+  }, [isLoading, me, router]);
+
+  const handleLogout = async () => {
+    await apiPost("/api/auth/logout", {});
+    router.replace("/auth/login");
+  };
+
+  if (isLoading || !me || me.role !== "ADMIN") {
+    return (
+      <div className="min-h-screen bg-[#F4F5F7] flex items-center justify-center">
+        <div className="rounded-xl border border-gray-200/60 bg-white px-6 py-5 shadow-sm">
+          <p className="text-sm text-[#6B7280]">Validando permisos de administrador...</p>
+        </div>
+      </div>
+    );
+  }
 
   const activeRoute = NAV_ITEMS.find(item => pathname?.startsWith(item.href));
   const pageTitle = activeRoute ? activeRoute.label : "Admin Panel";
@@ -67,7 +98,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div className="p-4 border-t border-slate-800 bg-slate-950/30">
-          <button className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
             <LogOut className="h-5 w-5" />
             <span className="font-medium">Cerrar Sesión</span>
           </button>
@@ -129,9 +160,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* User Profile */}
             <div className="flex items-center gap-2">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-slate-900 leading-tight">Admin User</p>
-                <p className="text-xs text-slate-500 leading-tight">admin@coremen.pe</p>
-              </div>
+                  <p className="text-sm font-semibold text-slate-900 leading-tight">{me.name}</p>
+                  <p className="text-xs text-slate-500 leading-tight">{me.email}</p>
+                </div>
               <div className="h-9 w-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-700">
                 <UserCircle className="h-6 w-6" />
               </div>

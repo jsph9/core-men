@@ -16,6 +16,7 @@ import quoteRoutes from './routes/quote.routes';
 import merchantRoutes from './routes/merchant.routes';
 import customizationRoutes from './routes/customization.routes';
 import adminRoutes from './routes/admin.routes';
+import usersRoutes from './routes/users.routes';
 
 const app: Express = express();
 
@@ -40,6 +41,7 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // ─── API Routes ────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/checkout', checkoutRoutes);

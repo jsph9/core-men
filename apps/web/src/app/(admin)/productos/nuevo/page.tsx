@@ -20,12 +20,15 @@ const productSchema = z.object({
   basePrice: z.coerce.number().min(0.1, "El precio base debe ser mayor a 0"),
   categoryId: z.string().min(1, "Selecciona una categoría"),
   fabricId: z.string().min(1, "Selecciona un tipo de tela"),
+  sizeGuideText: z.string().optional(),
+  isBaseProduct: z.boolean().default(true),
   imageUrl: z.string().url("Debe ser una URL de imagen válida").optional().or(z.literal("")),
   variants: z.array(z.object({
     sizeId: z.string().min(1, "Selecciona una talla"),
     color: z.string().min(1, "Ingresa un color"),
     stock: z.coerce.number().min(0, "El stock no puede ser negativo"),
-    price: z.coerce.number().optional().or(z.literal("").transform(() => undefined))
+    price: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
+    discountPct: z.coerce.number().min(0).max(100).optional().or(z.literal("").transform(() => undefined))
   })).min(1, "Debes añadir al menos una variante")
 });
 
@@ -47,6 +50,8 @@ export default function NuevoProductoPage() {
       basePrice: 0,
       categoryId: "",
       fabricId: "",
+      sizeGuideText: "",
+      isBaseProduct: true,
       imageUrl: "",
       variants: [{ sizeId: "", color: "", stock: 0 }]
     }
@@ -58,7 +63,7 @@ export default function NuevoProductoPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: ProductFormValues) => apiPost("/api/products", data),
+    mutationFn: (data: ProductFormValues) => apiPost("/api/admin/products", data),
     onSuccess: () => {
       toast.success("Producto creado exitosamente");
       router.push("/productos");
@@ -118,6 +123,11 @@ export default function NuevoProductoPage() {
               <Textarea {...form.register("description")} placeholder="Detalles del producto, corte, estilo..." rows={3} />
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Guía de talla (texto)</label>
+              <Textarea {...form.register("sizeGuideText")} placeholder="Ej. S: Pecho 52cm / Largo 68cm / Manga 21cm" rows={3} />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">Categoría *</label>
@@ -147,6 +157,11 @@ export default function NuevoProductoPage() {
                 {form.formState.errors.fabricId && <p className="text-xs text-red-500">{form.formState.errors.fabricId.message}</p>}
               </div>
             </div>
+
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" {...form.register("isBaseProduct")} />
+              Esta prenda es producto base (no editable por cliente)
+            </label>
           </CardContent>
         </Card>
 
@@ -207,6 +222,11 @@ export default function NuevoProductoPage() {
                   <div className="w-full md:w-32 space-y-2">
                     <label className="text-xs font-semibold text-slate-500 uppercase" title="Opcional. Sobrescribe el precio base">Precio Específico</label>
                     <Input type="number" step="0.01" {...form.register(`variants.${index}.price`)} placeholder="Opcional" className="bg-white" />
+                  </div>
+
+                  <div className="w-full md:w-32 space-y-2">
+                    <label className="text-xs font-semibold text-slate-500 uppercase">Descuento %</label>
+                    <Input type="number" step="0.01" {...form.register(`variants.${index}.discountPct`)} placeholder="Opcional" className="bg-white" />
                   </div>
 
                   <Button type="button" variant="ghost" size="icon" className="text-slate-400 hover:text-red-600 mb-0.5" onClick={() => remove(index)} disabled={fields.length === 1}>

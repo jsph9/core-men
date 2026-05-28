@@ -5,16 +5,18 @@ import prisma from '../lib/prisma';
 import { logAudit } from '../services/audit.service';
 import { sendAccountUnlockedEmail } from '../services/email.service';
 import { Request, Response } from 'express';
+import { createProduct } from '../controllers/products.controller';
 
 const router = Router();
 
 // ──── Attributes (Categories, Fabrics, Sizes) ──────────────────────────
 // Public endpoint so the UI can easily fetch it without strict role barriers
-router.get('/attributes', async (_req: Request, res: Response) => {
+router.get('/attributes', async (req: Request, res: Response) => {
+  const includeInactive = req.query.includeInactive === 'true';
   const [categories, fabrics, sizes] = await Promise.all([
-    prisma.category.findMany({ where: { isActive: true } }),
-    prisma.fabricAttribute.findMany({ where: { isActive: true } }),
-    prisma.sizeAttribute.findMany({ where: { isActive: true } })
+    prisma.category.findMany({ where: includeInactive ? undefined : { isActive: true } }),
+    prisma.fabricAttribute.findMany({ where: includeInactive ? undefined : { isActive: true } }),
+    prisma.sizeAttribute.findMany({ where: includeInactive ? undefined : { isActive: true } })
   ]);
   res.json({ categories, fabrics, sizes });
 });
@@ -22,7 +24,87 @@ router.get('/attributes', async (_req: Request, res: Response) => {
 // All admin routes require ADMIN role
 router.use(requireRole(Role.ADMIN));
 
+router.post('/categories', async (req: Request, res: Response) => {
+  const created = await prisma.category.create({ data: { name: req.body.name } });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'Category', entityId: created.id, newValue: created, ipAddress: req.ip });
+  res.status(201).json(created);
+});
+
+router.patch('/categories/:id', async (req: Request, res: Response) => {
+  const updated = await prisma.category.update({
+    where: { id: req.params.id },
+    data: {
+      name: typeof req.body.name === 'string' ? req.body.name : undefined,
+      isActive: typeof req.body.isActive === 'boolean' ? req.body.isActive : undefined,
+    }
+  });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'Category', entityId: updated.id, newValue: updated, ipAddress: req.ip });
+  res.json(updated);
+});
+
+router.delete('/categories/:id', async (req: Request, res: Response) => {
+  const hasProducts = await prisma.product.findFirst({ where: { categoryId: req.params.id } });
+  if (hasProducts) return res.status(409).json({ error: 'No se puede eliminar la categoría porque hay productos que la usan.' });
+  await prisma.category.delete({ where: { id: req.params.id } });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'Category', entityId: req.params.id, newValue: { action: 'HARD_DELETE' }, ipAddress: req.ip });
+  res.json({ message: 'Categoría eliminada' });
+});
+
+router.post('/fabrics', async (req: Request, res: Response) => {
+  const created = await prisma.fabricAttribute.create({ data: { value: req.body.value } });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'FabricAttribute', entityId: created.id, newValue: created, ipAddress: req.ip });
+  res.status(201).json(created);
+});
+
+router.patch('/fabrics/:id', async (req: Request, res: Response) => {
+  const updated = await prisma.fabricAttribute.update({
+    where: { id: req.params.id },
+    data: {
+      value: typeof req.body.value === 'string' ? req.body.value : undefined,
+      isActive: typeof req.body.isActive === 'boolean' ? req.body.isActive : undefined,
+    }
+  });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'FabricAttribute', entityId: updated.id, newValue: updated, ipAddress: req.ip });
+  res.json(updated);
+});
+
+router.delete('/fabrics/:id', async (req: Request, res: Response) => {
+  const hasProducts = await prisma.product.findFirst({ where: { fabricId: req.params.id } });
+  if (hasProducts) return res.status(409).json({ error: 'No se puede eliminar la tela porque hay productos que la usan.' });
+  await prisma.fabricAttribute.delete({ where: { id: req.params.id } });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'FabricAttribute', entityId: req.params.id, newValue: { action: 'HARD_DELETE' }, ipAddress: req.ip });
+  res.json({ message: 'Tela eliminada' });
+});
+
+router.post('/sizes', async (req: Request, res: Response) => {
+  const created = await prisma.sizeAttribute.create({ data: { value: req.body.value } });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'SizeAttribute', entityId: created.id, newValue: created, ipAddress: req.ip });
+  res.status(201).json(created);
+});
+
+router.patch('/sizes/:id', async (req: Request, res: Response) => {
+  const updated = await prisma.sizeAttribute.update({
+    where: { id: req.params.id },
+    data: {
+      value: typeof req.body.value === 'string' ? req.body.value : undefined,
+      isActive: typeof req.body.isActive === 'boolean' ? req.body.isActive : undefined,
+    }
+  });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'SizeAttribute', entityId: updated.id, newValue: updated, ipAddress: req.ip });
+  res.json(updated);
+});
+
+router.delete('/sizes/:id', async (req: Request, res: Response) => {
+  const hasVariants = await prisma.productVariant.findFirst({ where: { sizeId: req.params.id } });
+  if (hasVariants) return res.status(409).json({ error: 'No se puede eliminar la talla porque hay variantes de producto que la usan.' });
+  await prisma.sizeAttribute.delete({ where: { id: req.params.id } });
+  await logAudit({ type: 'STOCK_ADJUST', userId: req.user!.userId, entityType: 'SizeAttribute', entityId: req.params.id, newValue: { action: 'HARD_DELETE' }, ipAddress: req.ip });
+  res.json({ message: 'Talla eliminada' });
+});
+
 // ──── User Management ──────────────────────────────────────────────────
+router.post('/products', createProduct);
+
 router.get('/users', async (req: Request, res: Response) => {
   const users = await prisma.user.findMany({
     select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true, lockedUntil: true }

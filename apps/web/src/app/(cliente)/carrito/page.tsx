@@ -9,6 +9,13 @@ import { toast } from "sonner";
 import { Trash2, Minus, Plus, ChevronLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
+const getDiscountLabel = (type: string, pct: number) => {
+  if (type === "volume") return `Vol. ${pct}%`;
+  if (type === "season") return `Temporada ${pct}%`;
+  if (type === "combined") return `Combinado ${pct}%`;
+  return null;
+};
+
 export default function CarritoPage() {
   const queryClient = useQueryClient();
   const { data: cart, isLoading } = useQuery<any>({ queryKey: ["cart"], queryFn: () => apiGet("/api/cart") });
@@ -167,14 +174,25 @@ export default function CarritoPage() {
 
                           {/* Price */}
                           <div className="text-right">
-                            {item.discountType !== "none" && (
-                              <p className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-0.5 rounded inline-block mb-1">
-                                -{item.appliedDiscountPct}% dto.
-                              </p>
-                            )}
+                            {item.discountType !== "none" ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-green-600 font-semibold bg-green-50 px-2 py-0.5 rounded inline-block">
+                                  {getDiscountLabel(item.discountType, item.appliedDiscountPct)}
+                                </p>
+                                <p className="text-xs text-slate-400 line-through">
+                                  {formatCurrency(Number(item.originalUnitPrice) * item.quantity)}
+                                </p>
+                                <p className="text-xs text-green-700 font-medium">Ahorro: {formatCurrency(Number(item.savingsAmount || 0))}</p>
+                              </div>
+                            ) : null}
                             <p className="font-bold text-slate-900 text-lg">{formatCurrency(Number(item.subtotal))}</p>
                           </div>
                         </div>
+                        {item.thresholdHint && item.thresholdHint.missingUnits > 0 && item.thresholdHint.missingUnits <= 15 ? (
+                          <div className="mt-3 rounded-r-lg border-l-4 border-blue-500 bg-blue-50 p-3 text-sm text-blue-800">
+                            Te faltan {item.thresholdHint.missingUnits} unidades de este producto para llegar a {item.thresholdHint.targetPercentage}% de descuento.
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -190,12 +208,12 @@ export default function CarritoPage() {
                 <div className="space-y-4 mb-6">
                   <div className="flex justify-between text-slate-600">
                     <span>Subtotal original</span>
-                    <span>{formatCurrency(cart.items.reduce((acc: number, item: any) => acc + (Number(item.productVariant?.product?.basePrice || 0) * item.quantity), 0))}</span>
+                    <span>{formatCurrency(cart.items.reduce((acc: number, item: any) => acc + (Number(item.originalUnitPrice || 0) * item.quantity), 0))}</span>
                   </div>
                   
                   {/* Calculate total discounts for display */}
                   {(() => {
-                    const originalTotal = cart.items.reduce((acc: number, item: any) => acc + (Number(item.productVariant?.product?.basePrice || 0) * item.quantity), 0);
+                    const originalTotal = cart.items.reduce((acc: number, item: any) => acc + (Number(item.originalUnitPrice || 0) * item.quantity), 0);
                     const currentTotal = Number(cart.totalAmount);
                     const totalSaved = originalTotal - currentTotal;
                     

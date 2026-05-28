@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = typeof window === 'undefined'
+  ? (process.env.BACKEND_API_URL || 'http://localhost:3001')
+  : (process.env.NEXT_PUBLIC_API_URL || '');
 
 /**
  * Fetch wrapper que envía JWT desde cookie automáticamente.
@@ -26,6 +28,8 @@ export async function api<T = any>(
 
   return res.json();
 }
+
+export const apiRequest = api;
 
 // Helper methods
 export const apiGet = <T>(endpoint: string) => api<T>(endpoint);

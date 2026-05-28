@@ -1,27 +1,14 @@
 import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
-import { OrderStatus, Role } from '@coremen/types';
+import { OrderRepository } from '../repositories/order.repository';
+import { OrderStatus } from '@coremen/types';
+import { generateOrderReceipt } from '../services/pdf.service';
 
 // Cliente - Ver historial de pedidos
 export const getClientOrders = async (req: Request, res: Response) => {
   try {
     const userId = req.user!.userId;
 
-    const orders = await prisma.order.findMany({
-      where: { userId },
-      include: {
-        items: {
-          include: {
-            productVariant: {
-              include: { product: true }
-            }
-          }
-        },
-        payment: true,
-      },
-      // RF-16: Sort active first, then completed. Done in code since Prisma doesn't support custom sort groups natively yet.
-      orderBy: { createdAt: 'desc' }
-    });
+    const orders = await OrderRepository.findManyByUserId(userId);
 
     // Custom sorting: Activos primero (REGISTERED, IN_PRODUCTION, READY_FOR_PICKUP)
     const activeStatuses = [OrderStatus.REGISTERED, OrderStatus.IN_PRODUCTION, OrderStatus.READY_FOR_PICKUP];
@@ -47,14 +34,7 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.user!.userId;
 
-    const order = await prisma.order.findUnique({
-      where: { id },
-      include: {
-        items: { include: { productVariant: { include: { product: true } } } },
-        payment: true,
-        statusHistory: { orderBy: { createdAt: 'desc' } }
-      }
-    });
+    const order = await OrderRepository.findByIdWithDetails(id);
 
     if (!order || order.userId !== userId) {
       return res.status(404).json({ error: 'Order not found' });
@@ -74,7 +54,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const { status, reason } = req.body;
     const merchantId = req.user!.userId;
 
-    const order = await prisma.order.findUnique({ where: { id }, include: { payment: true } });
+    const order = await OrderRepository.findById(id);
     
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
@@ -84,26 +64,36 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No se puede avanzar a producción sin pago confirmado' });
     }
 
-    const updated = await prisma.order.update({
-      where: { id },
-      data: {
-        status,
-        statusHistory: {
-          create: {
-            fromStatus: order.status,
-            toStatus: status,
-            changedBy: merchantId,
-            reason
-          }
-        }
-      }
-    });
+    const updated = await OrderRepository.updateStatus(id, status, order.status as OrderStatus, merchantId, reason);
 
     // TODO: Send notification email to client via Resend
     
     res.json(updated);
   } catch (error) {
     console.error('Update order status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const downloadOrderReceipt = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user!.userId;
+
+    const order = await OrderRepository.findByIdWithReceiptDetails(id);
+
+    if (!order || order.userId !== userId) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    const buffer = await generateOrderReceipt(order);
+    const receiptType = order.receiptType || 'boleta';
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${receiptType}-${order.id}.pdf"`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('Download receipt error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

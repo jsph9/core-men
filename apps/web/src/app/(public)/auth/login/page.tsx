@@ -37,32 +37,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
-      <Card className="w-full max-w-md border-gray-800 bg-white/5 backdrop-blur-lg text-white">
+    <div className="min-h-screen bg-[#F4F5F7] px-4 py-8">
+      <Card className="mx-auto mt-20 w-full max-w-md rounded-xl border border-gray-200/60 bg-white shadow-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-white">Iniciar Sesión</CardTitle>
-          <CardDescription className="text-gray-400">Ingresa a tu cuenta CoreMen</CardDescription>
+          <p className="text-xl font-semibold tracking-tight text-[#1F3864]">CoreMen</p>
+          <CardTitle className="text-2xl font-semibold tracking-tight text-[#1A1A2E]">Bienvenido a CoreMen</CardTitle>
+          <CardDescription className="text-gray-500">Ingresa tus credenciales para continuar</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg p-3">{error}</div>}
+            {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
             <div className="space-y-2">
-              <Label className="text-gray-300">Email</Label>
-              <Input {...register("email")} type="email" placeholder="tu@email.com" className="bg-white/10 border-white/20 text-white placeholder:text-gray-500" />
-              {errors.email && <p className="text-red-400 text-xs">{errors.email.message}</p>}
+              <Label className="text-[#1A1A2E]">Correo electrónico</Label>
+              <Input {...register("email")} type="email" placeholder="tu@email.com" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label className="text-gray-300">Contraseña</Label>
-              <Input {...register("password")} type="password" placeholder="••••••••" className="bg-white/10 border-white/20 text-white placeholder:text-gray-500" />
-              {errors.password && <p className="text-red-400 text-xs">{errors.password.message}</p>}
+              <Label className="text-[#1A1A2E]">Contraseña</Label>
+              <Input {...register("password")} type="password" placeholder="••••••••" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
             </div>
-            <Button type="submit" className="w-full bg-blue-500 hover:bg-blue-600" disabled={isSubmitting}>
-              {isSubmitting ? "Ingresando..." : "Ingresar"}
+            <div className="text-right">
+              <Link href="/auth/forgot-password" className="text-sm text-[#2E75B6] hover:underline">¿Olvidaste tu contraseña?</Link>
+            </div>
+            <Button type="submit" className="w-full rounded-lg bg-[#2E75B6] text-white hover:brightness-105 active:scale-[0.98]" disabled={isSubmitting}>
+              {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
             </Button>
-            <div className="flex justify-between text-sm">
-              <Link href="/auth/forgot-password" className="text-blue-400 hover:underline">¿Olvidaste tu contraseña?</Link>
-              <Link href="/auth/register" className="text-blue-400 hover:underline">Crear cuenta</Link>
-            </div>
+            <p className="text-center text-sm text-gray-500">
+              ¿No tienes cuenta? <Link href="/auth/register" className="text-[#2E75B6] hover:underline">Regístrate</Link>
+            </p>
           </form>
         </CardContent>
       </Card>

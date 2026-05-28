@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { stripe } from '../lib/stripe';
-import prisma from '../lib/prisma';
-import { OrderStatus } from '@coremen/types';
-// import { sendOrderReceiptEmail } from '../services/email.service'; // Pending implementation
+import { OrderService } from '../services/order.service';
+import { UserRepository } from '../repositories/user.repository';
+import { OrderRepository } from '../repositories/order.repository';
+import { generateOrderReceipt } from '../services/pdf.service';
+import { sendOrderReceiptEmail } from '../services/email.service';
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -23,67 +25,33 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object as any;
     const { cartId, userId } = paymentIntent.metadata;
+    const receiptType = paymentIntent.metadata?.receiptType === 'factura' ? 'factura' : 'boleta';
+    const preferredPaymentMethod = paymentIntent.metadata?.preferredPaymentMethod || 'card';
 
     try {
-      // 1. Transaction to handle Order creation, Stock reduction, and Cart clearing
-      await prisma.$transaction(async (tx) => {
-        const cart = await tx.cart.findUnique({
-          where: { id: cartId },
-          include: { items: { include: { productVariant: true } } }
-        });
+      const existingPayment = await OrderRepository.findPaymentByStripeId(paymentIntent.id);
+      if (existingPayment) {
+        return res.json({ received: true });
+      }
 
-        if (!cart) throw new Error('Cart not found during webhook execution');
+      // Orquestación a través del servicio OrderService (capa de lógica de negocio)
+      const order = await OrderService.createOrderFromCart(
+        cartId,
+        userId,
+        receiptType,
+        preferredPaymentMethod,
+        paymentIntent.id,
+        paymentIntent.amount / 100,
+        paymentIntent.currency
+      );
 
-        // Create Order
-        const order = await tx.order.create({
-          data: {
-            userId,
-            totalAmount: paymentIntent.amount / 100,
-            status: OrderStatus.REGISTERED,
-            payment: {
-              create: {
-                stripePaymentId: paymentIntent.id,
-                amount: paymentIntent.amount / 100,
-                currency: paymentIntent.currency.toUpperCase(),
-                status: 'confirmed',
-                method: paymentIntent.payment_method_types[0] || 'card',
-                paidAt: new Date()
-              }
-            },
-            statusHistory: {
-              create: {
-                toStatus: OrderStatus.REGISTERED,
-                changedBy: 'system',
-                reason: 'Pago confirmado por Stripe'
-              }
-            },
-            items: {
-              create: cart.items.map(item => ({
-                productVariantId: item.productVariantId,
-                quantity: item.quantity,
-                unitPrice: item.productVariant.price || 0, // In reality, we'd use the discount final price
-                subtotal: 0 // To be accurate, we'd recompute or store the final price in the cart
-              }))
-            }
-          }
-        });
+      const user = await UserRepository.findById(userId);
+      if (user) {
+        const receiptPdf = await generateOrderReceipt(order);
+        await sendOrderReceiptEmail(user.email, order.id, receiptPdf);
+      }
 
-        // Reduce stock
-        for (const item of cart.items) {
-          await tx.productVariant.update({
-            where: { id: item.productVariantId },
-            data: { stock: { decrement: item.quantity } }
-          });
-        }
-
-        // Clear cart
-        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-
-        // 4 & 5. Generar PDF y enviar email (Simulado)
-        // const user = await tx.user.findUnique({ where: { id: userId } });
-        // await sendOrderReceiptEmail(user, order);
-        console.log(`Order ${order.id} processed successfully`);
-      });
+      console.log(`Order ${order.id} processed successfully`);
 
     } catch (error) {
       console.error('Error processing payment_intent.succeeded:', error);

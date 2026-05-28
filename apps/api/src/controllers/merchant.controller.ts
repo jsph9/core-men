@@ -1,15 +1,12 @@
 import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
+import { UserRepository } from '../repositories/user.repository';
 
 export const updateMerchantProfile = async (req: Request, res: Response) => {
   try {
     const { whatsappNumber } = req.body;
     const merchantId = req.user!.userId;
 
-    const updated = await prisma.user.update({
-      where: { id: merchantId },
-      data: { whatsappNumber }
-    });
+    const updated = await UserRepository.update(merchantId, { whatsappNumber });
 
     res.json({ message: 'Profile updated successfully', user: updated });
   } catch (error) {

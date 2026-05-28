@@ -9,6 +9,11 @@ interface DiscountResult {
   type: 'none' | 'volume' | 'season' | 'combined';
 }
 
+interface NextVolumeThreshold {
+  minQuantity: number;
+  percentage: number;
+}
+
 /**
  * Motor de Descuentos (Discount Engine)
  * Calcula el mejor descuento aplicable para una cantidad y un precio base.
@@ -80,5 +85,24 @@ export const calculateDiscount = async (
     discountAmount,
     finalPrice,
     type,
+  };
+};
+
+export const getNextVolumeThreshold = async (quantity: number): Promise<NextVolumeThreshold | null> => {
+  const nextRule = await prisma.discountRule.findFirst({
+    where: {
+      isActive: true,
+      minQuantity: { gt: quantity },
+    },
+    orderBy: { minQuantity: 'asc' }
+  });
+
+  if (!nextRule) {
+    return null;
+  }
+
+  return {
+    minQuantity: nextRule.minQuantity,
+    percentage: Number(nextRule.percentage),
   };
 };

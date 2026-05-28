@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { registerUser, loginUser, requestPasswordReset, resetPassword } from '../services/auth.service';
+import { UserRepository } from '../repositories/user.repository';
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -57,13 +58,11 @@ export const handleResetPassword = async (req: Request, res: Response) => {
 
 export const getMe = async (req: Request, res: Response) => {
   try {
-    const { default: prisma } = await import('../lib/prisma');
-    const user = await prisma.user.findUnique({
-      where: { id: req.user!.userId },
-      select: { id: true, email: true, name: true, role: true, whatsappNumber: true }
-    });
+    const user = await UserRepository.findById(req.user!.userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
+    
+    const { id, email, name, role, whatsappNumber } = user;
+    res.json({ id, email, name, role, whatsappNumber });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

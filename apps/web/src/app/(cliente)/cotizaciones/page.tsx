@@ -39,6 +39,11 @@ export default function CotizacionesClientePage() {
                   <div>
                     <p className="font-semibold text-gray-900">Cotización #{q.id.slice(0, 8)}</p>
                     <p className="text-sm text-gray-500">{q.garmentType} · {q.totalQuantity} uds · {formatDate(q.createdAt)}</p>
+                    {q.status === "UNFEASIBLE" && q.unfeasibleReason ? (
+                      <p className="mt-1 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-block">
+                        Motivo técnico: {q.unfeasibleReason}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-4">
                     <Badge variant={s.variant}>{s.label}</Badge>
