@@ -9,6 +9,7 @@ import { CartModule } from '../cart/cart.module';
 @Module({
   imports: [CartModule],
   controllers: [OrdersController, CheckoutController],
-  providers: [OrdersService, CheckoutService, PaymentService]
+  providers: [OrdersService, CheckoutService, PaymentService],
+  exports: [OrdersService]
 })
 export class OrdersModule {}

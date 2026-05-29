@@ -4,12 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { apiPost } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -19,6 +21,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [error, setError] = useState("");
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -28,6 +31,10 @@ export default function LoginPage() {
     try {
       setError("");
       const res = await apiPost<{ role: string }>("/api/auth/login", data);
+      
+      // Limpiar caché anterior (para que el Layout admin/merchant no use un error cacheado)
+      queryClient.clear();
+
       if (res.role === "ADMIN") router.push("/dashboard");
       else if (res.role === "MERCHANT") router.push("/gestion-cotizaciones");
       else router.push("/catalogo");

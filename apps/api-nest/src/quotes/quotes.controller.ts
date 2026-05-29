@@ -11,7 +11,7 @@ export class QuotesController {
   constructor(private readonly quotesService: QuotesService) {}
 
   // Cliente
-  @Get('my-quotes')
+  @Get()
   @Roles(Role.CLIENT)
   async getClientQuotes(@Req() req: any) {
     return this.quotesService.getClientQuotes(req.user.userId);
@@ -29,29 +29,6 @@ export class QuotesController {
     return this.quotesService.approveQuote(req.user.userId, id);
   }
 
-  // Comerciante
-  @Get('merchant')
-  @Roles(Role.MERCHANT)
-  async getMerchantQuotes(@Query('status') status?: QuoteStatus) {
-    return this.quotesService.getMerchantQuotes(status);
-  }
-
-  @Get('merchant/:id')
-  @Roles(Role.MERCHANT)
-  async getMerchantQuoteById(@Param('id') id: string) {
-    return this.quotesService.getMerchantQuoteById(id);
-  }
-
-  @Patch('merchant/:id/respond')
-  @Roles(Role.MERCHANT)
-  async respondToQuote(@Req() req: any, @Param('id') id: string, @Body() data: RespondQuoteDto) {
-    return this.quotesService.respondToQuote(req.user.userId, id, data);
-  }
-
-  @Patch('merchant/:id/unfeasible')
-  @Roles(Role.MERCHANT)
-  async markUnfeasible(@Req() req: any, @Param('id') id: string, @Body() data: MarkUnfeasibleDto) {
-    return this.quotesService.markUnfeasible(req.user.userId, id, data);
-  }
+  // Los endpoints de comerciante fueron movidos a MerchantController
 }
 

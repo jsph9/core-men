@@ -19,11 +19,33 @@ interface NextVolumeThreshold {
 export class DiscountService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async syncSeasonDiscountStatuses() {
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.seasonDiscount.updateMany({
+        where: {
+          status: 'SCHEDULED',
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        data: { status: 'ACTIVE' },
+      }),
+      this.prisma.seasonDiscount.updateMany({
+        where: {
+          status: { in: ['SCHEDULED', 'ACTIVE'] },
+          endDate: { lt: now },
+        },
+        data: { status: 'EXPIRED' },
+      }),
+    ]);
+  }
+
   async calculateDiscount(
     quantity: number,
     basePriceStr: string | number | Prisma.Decimal,
     categoryId?: string
   ): Promise<DiscountResult> {
+    await this.syncSeasonDiscountStatuses();
     const basePrice = new Decimal(basePriceStr as string | number);
     
     const volumeDiscount = await this.prisma.discountRule.findFirst({
