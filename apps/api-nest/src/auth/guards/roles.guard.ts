@@ -15,7 +15,10 @@ export class RolesGuard implements CanActivate {
     ]);
 
     const request = context.switchToHttp().getRequest();
+    console.log('[NestJS RolesGuard] Request headers:', request.headers);
+    console.log('[NestJS RolesGuard] Request cookies:', request.cookies);
     const token = this.extractTokenFromCookie(request);
+    console.log('[NestJS RolesGuard] Extracted token:', token);
 
     if (!token) {
       if (!requiredRoles) return true; // Si la ruta no está protegida
@@ -23,9 +26,7 @@ export class RolesGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET || 'secret'
-      });
+      const payload = await this.jwtService.verifyAsync(token);
       request['user'] = payload; // Inject the user context into the request
 
       if (!requiredRoles || requiredRoles.length === 0) {

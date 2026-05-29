@@ -1,9 +1,10 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Res } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Res, Get, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RequestResetDto, ResetPasswordDto } from './dto/reset-password.dto';
 import type { Response } from 'express';
+import { RolesGuard } from './guards/roles.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +28,12 @@ export class AuthController {
     });
 
     return { role: result.role };
+  }
+
+  @Get('me')
+  @UseGuards(RolesGuard)
+  async getMe(@Req() req: any) {
+    return this.authService.getMe(req.user.userId);
   }
 
   @HttpCode(HttpStatus.OK)

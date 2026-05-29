@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPut, apiDelete } from "@/lib/api";
+import { apiGet, apiPatch, apiDelete } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -23,7 +23,7 @@ export default function CarritoPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const updateQty = useMutation({
-    mutationFn: ({ itemId, quantity }: { itemId: string; quantity: number }) => apiPut(`/api/cart/items/${itemId}`, { quantity }),
+    mutationFn: ({ itemId, quantity }: { itemId: string; quantity: number }) => apiPatch(`/api/cart/items/${itemId}`, { quantity }),
     onMutate: (variables) => {
       setUpdatingId(variables.itemId);
     },

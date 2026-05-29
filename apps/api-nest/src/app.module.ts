@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma.module';
@@ -10,9 +11,26 @@ import { QuotesModule } from './quotes/quotes.module';
 import { MerchantModule } from './merchant/merchant.module';
 import { AdminModule } from './admin/admin.module';
 import { SharedModule } from './shared/shared.module';
+import { UsersModule } from './users/users.module';
+import { CustomizationModule } from './customization/customization.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, ProductsModule, CartModule, OrdersModule, QuotesModule, MerchantModule, AdminModule, SharedModule],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule, 
+    AuthModule, 
+    ProductsModule, 
+    CartModule, 
+    OrdersModule, 
+    QuotesModule, 
+    MerchantModule, 
+    AdminModule, 
+    SharedModule,
+    UsersModule,
+    CustomizationModule,
+    WebhooksModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

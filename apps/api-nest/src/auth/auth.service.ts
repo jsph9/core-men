@@ -142,5 +142,18 @@ export class AuthService {
       }),
     ]);
   }
+
+  async getMe(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    const { id, email, name, role, whatsappNumber } = user;
+    return { id, email, name, role, whatsappNumber };
+  }
 }
 

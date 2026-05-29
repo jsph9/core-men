@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND_URL = process.env.BACKEND_API_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.BACKEND_API_URL || 'http://127.0.0.1:3001';
 
 async function handleRequest(
   request: NextRequest,
@@ -27,29 +27,55 @@ async function handleRequest(
 
     if (!['GET', 'HEAD'].includes(request.method)) {
       const contentType = request.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        options.body = JSON.stringify(await request.json());
-      } else if (contentType.includes('multipart/form-data')) {
-        options.body = await request.formData();
-      } else {
-        options.body = await request.blob();
+      const contentLength = request.headers.get('content-length');
+      
+      if (contentLength !== '0') {
+        try {
+          if (contentType.includes('application/json')) {
+            const bodyText = await request.text();
+            if (bodyText && bodyText.trim().length > 0) {
+              options.body = bodyText;
+            }
+          } else if (contentType.includes('multipart/form-data')) {
+            options.body = await request.formData();
+          } else {
+            const blob = await request.blob();
+            if (blob && blob.size > 0) {
+              options.body = blob;
+            }
+          }
+        } catch (bodyError) {
+          console.warn('[BFF Proxy] Warning reading request body:', bodyError);
+        }
       }
       // @ts-ignore
       options.duplex = 'half';
     }
 
+    console.log(`[BFF Proxy] Request ${request.method} ${pathStr}`);
+    console.log(`[BFF Proxy] Request Cookie Header:`, request.headers.get('cookie'));
+
     const res = await fetch(targetUrl, options);
+
+    console.log(`[BFF Proxy] Response Status: ${res.status}`);
+    console.log(`[BFF Proxy] Response Set-Cookie Header:`, res.headers.getSetCookie());
 
     const responseHeaders = new Headers();
     res.headers.forEach((value, key) => {
       if (
         key.toLowerCase() !== 'transfer-encoding' &&
         key.toLowerCase() !== 'content-encoding' &&
-        key.toLowerCase() !== 'content-length'
+        key.toLowerCase() !== 'content-length' &&
+        key.toLowerCase() !== 'set-cookie'
       ) {
         responseHeaders.set(key, value);
       }
     });
+
+    const setCookies = res.headers.getSetCookie();
+    for (const cookie of setCookies) {
+      responseHeaders.append('Set-Cookie', cookie);
+    }
 
     const body = await res.arrayBuffer();
 
