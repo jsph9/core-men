@@ -1,0 +1,1 @@
+export default function Catalogo() { return <div>Catálogo en construcción</div>; }
