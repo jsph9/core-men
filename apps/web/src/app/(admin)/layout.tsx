@@ -49,6 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isLoading, me, router]);
 
+
   const handleLogout = async () => {
     await apiPost("/api/auth/logout", {});
     router.replace("/auth/login");
