@@ -1,252 +1,356 @@
 "use client";
-import { useState } from "react";
-import Image from "next/image";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGet, apiPut } from "@/lib/api";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { apiGet } from "@/lib/api";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { formatDate } from "@/lib/utils";
-import { MessageSquare, Phone, CheckCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { 
+  TrendingUp, 
+  FileText, 
+  Clock, 
+  Banknote, 
+  Filter, 
+  Eye, 
+  Shirt,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown
+} from "lucide-react";
 
 export default function CotizacionesComerciante() {
-  const queryClient = useQueryClient();
+  // 1. Estados para los Filtros
+  const [statusFilter, setStatusFilter] = useState("Todos");
+  const [dateFilter, setDateFilter] = useState("");
+  const [garmentFilter, setGarmentFilter] = useState("Todos");
   
-  // Perfil del Comerciante
-  const { data: userProfile } = useQuery<any>({ queryKey: ["merchant-profile"], queryFn: () => apiGet("/api/auth/me") });
-  const [whatsapp, setWhatsapp] = useState("");
+  // 2. Estados para la Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  // 3. Consulta de Cotizaciones (Base de datos)
+  const { data: quotes = [], isLoading } = useQuery<any>({ 
+    queryKey: ["merchant-quotes"], 
+    queryFn: () => apiGet("/api/merchant/quotes") 
+  });
+
+  // 4. Extracción dinámica de Tipos de Prenda únicos de la BD para el menú desplegable
+  const uniqueGarmentTypes = useMemo(() => {
+    if (!quotes || quotes.length === 0) return [];
+    const types = quotes.map((q: any) => q.garmentType);
+    return Array.from(new Set(types));
+  }, [quotes]);
+
+  // 5. Cálculos fijos para los KPIs superiores (Datos globales históricos)
+  const pendingCount = quotes.filter((q: any) => q.status === "PENDING").length;
+  const quotedCount = quotes.filter((q: any) => q.status === "QUOTED").length;
+  const totalValue = quotes.reduce((acc: number, q: any) => acc + (Number(q.quotedPrice) || 0), 0);
+
+  // 6. Lógica de Filtrado en Tiempo Real (Frontend)
+  const filteredQuotes = useMemo(() => {
+    return quotes.filter((quote: any) => {
+      // Filtro de Estado
+      let matchesStatus = true;
+      if (statusFilter === "PENDING") matchesStatus = quote.status === "PENDING";
+      if (statusFilter === "QUOTED") matchesStatus = quote.status === "QUOTED";
+      if (statusFilter === "APPROVED") matchesStatus = quote.status === "APPROVED";
+
+      // Filtro de Tipo de Prenda
+      const matchesGarment = garmentFilter === "Todos" || quote.garmentType === garmentFilter;
+
+      // Filtro de Fecha (Año-Mes)
+      let matchesDate = true;
+      if (dateFilter) {
+        const quoteDate = new Date(quote.createdAt);
+        const [year, month] = dateFilter.split("-");
+        matchesDate = quoteDate.getFullYear() === parseInt(year) && (quoteDate.getMonth() + 1) === parseInt(month);
+      }
+
+      return matchesStatus && matchesGarment && matchesDate;
+    });
+  }, [quotes, statusFilter, garmentFilter, dateFilter]);
+
+  // 7. Lógica de Paginación Dinámica (Máximo 8 por página)
+  const totalPages = Math.ceil(filteredQuotes.length / itemsPerPage) || 1;
   
-  // Cotizaciones
-  const { data: quotes, isLoading } = useQuery<any>({ queryKey: ["merchant-quotes"], queryFn: () => apiGet("/api/merchant/quotes") });
+  const paginatedQuotes = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredQuotes.slice(startIndex, endIndex);
+  }, [filteredQuotes, currentPage]);
 
-  // Actualizar Perfil
-  const updateProfile = useMutation({
-    mutationFn: (whatsappNumber: string) => apiPut("/api/merchant/profile", { whatsappNumber }),
-    onSuccess: () => {
-      toast.success("Perfil actualizado", { description: "Número de WhatsApp guardado correctamente." });
-      queryClient.invalidateQueries({ queryKey: ["merchant-profile"] });
-    }
-  });
+  // Función para resetear todos los filtros de golpe
+  const handleClearFilters = () => {
+    setStatusFilter("Todos");
+    setDateFilter("");
+    setGarmentFilter("Todos");
+    setCurrentPage(1);
+  };
 
-  // Responder Cotización
-  const [selectedQuote, setSelectedQuote] = useState<any>(null);
-  const [dialogType, setDialogType] = useState<"RESPOND" | "UNFEASIBLE" | null>(null);
-  const [quotedPrice, setQuotedPrice] = useState("");
-  const [merchantMessage, setMerchantMessage] = useState("");
-  const [unfeasibleReason, setUnfeasibleReason] = useState("");
-
-  const respondMutation = useMutation({
-    mutationFn: () => apiPut(`/api/merchant/quotes/${selectedQuote.id}/respond`, { 
-      quotedPrice: parseFloat(quotedPrice), 
-      merchantMessage 
-    }),
-    onSuccess: () => {
-      toast.success("Cotización respondida exitosamente");
-      setDialogType(null);
-      queryClient.invalidateQueries({ queryKey: ["merchant-quotes"] });
-    }
-  });
-
-  const unfeasibleMutation = useMutation({
-    mutationFn: () => apiPut(`/api/merchant/quotes/${selectedQuote.id}/unfeasible`, { unfeasibleReason }),
-    onSuccess: () => {
-      toast.success("Cotización marcada como inviable");
-      setDialogType(null);
-      queryClient.invalidateQueries({ queryKey: ["merchant-quotes"] });
-    }
-  });
+  const formatDateString = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+    return new Date(dateString).toLocaleDateString('es-ES', options).replace('.', ',');
+  };
 
   const getStatusBadge = (status: string) => {
-    const colors: any = {
-      PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      QUOTED: "bg-blue-100 text-blue-800 border-blue-200",
-      APPROVED: "bg-green-100 text-green-800 border-green-200",
-      REJECTED: "bg-red-100 text-red-800 border-red-200",
-      UNFEASIBLE: "bg-gray-100 text-gray-800 border-gray-200"
-    };
-    return <Badge variant="outline" className={`${colors[status] || "bg-slate-100"} font-medium`}>{status}</Badge>;
+    switch (status) {
+      case "PENDING":
+        return (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+            En negociación
+          </div>
+        );
+      case "QUOTED":
+        return (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+            Pendiente de formalización
+          </div>
+        );
+      case "APPROVED":
+        return (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+            Aprobado
+          </div>
+        );
+      default:
+        return (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium">
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-500"></div>
+            {status}
+          </div>
+        );
+    }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b sticky top-0 z-10 shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Gestión de Cotizaciones</h1>
-            <p className="text-sm text-slate-500">Responde a solicitudes de cotización de clientes mayoristas.</p>
-          </div>
-          
-          <div className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border">
-            <Phone className="h-4 w-4 text-slate-500" />
-            <Input 
-              placeholder="Número WhatsApp" 
-              className="h-8 w-36 text-sm bg-white" 
-              defaultValue={userProfile?.whatsappNumber || ""}
-              onChange={(e) => setWhatsapp(e.target.value)}
-            />
-            <Button size="sm" className="h-8" onClick={() => updateProfile.mutate(whatsapp || userProfile?.whatsappNumber)}>
-              Guardar
-            </Button>
+    <div className="min-h-screen bg-slate-50 p-6 font-sans">
+      
+      {/* Header & Breadcrumb */}
+      <div className="mb-8">
+        <p className="text-sm text-slate-500 mb-1">Gestión Comercial / <span className="font-semibold text-slate-900">Negociaciones</span></p>
+        <h1 className="text-3xl font-bold text-[#0F172A] mb-2">Bandeja de Negociaciones</h1>
+        <p className="text-slate-500 text-sm">Gestiona las propuestas activas y el proceso de formalización con los clientes</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-medium">En Negociación</p>
+          <div className="flex items-end justify-between mt-2">
+            <h3 className="text-3xl font-bold text-orange-600">{pendingCount}</h3>
+            <TrendingUp className="h-6 w-6 text-orange-300" strokeWidth={2.5} />
           </div>
         </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[1, 2, 3, 4].map(i => <Card key={i} className="h-64 animate-pulse bg-slate-100 border-none" />)}
+        
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-medium">Pendientes Formalizar</p>
+          <div className="flex items-end justify-between mt-2">
+            <h3 className="text-3xl font-bold text-blue-500">{quotedCount}</h3>
+            <FileText className="h-6 w-6 text-blue-300" strokeWidth={2.5} />
           </div>
-        ) : !quotes?.length ? (
-          <Card className="text-center py-20 border-dashed border-2">
-            <CardContent>
-              <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900">Sin cotizaciones</h3>
-              <p className="text-slate-500">No hay cotizaciones pendientes por revisar en este momento.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {quotes.map((q: any) => (
-              <Card key={q.id} className={`overflow-hidden transition-all ${q.status === 'PENDING' ? 'ring-2 ring-blue-500/20 shadow-md' : 'shadow-sm opacity-80 hover:opacity-100'}`}>
-                <div className="flex flex-col md:flex-row h-full">
-                  {/* Image Column */}
-                  {q.designImageUrl ? (
-                    <div className="w-full md:w-2/5 bg-slate-100 border-r relative min-h-[200px]">
-                      <Image src={q.designImageUrl} alt="Diseno" fill sizes="(max-width: 768px) 100vw, 40vw" className="object-cover p-2" unoptimized />
-                    </div>
-                  ) : (
-                    <div className="w-full md:w-2/5 bg-slate-100 border-r flex items-center justify-center min-h-[200px]">
-                      <span className="text-sm text-slate-400">Sin Diseño</span>
-                    </div>
-                  )}
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-medium">Tiempo Promedio</p>
+          <div className="flex items-end justify-between mt-2">
+            <h3 className="text-3xl font-bold text-[#0F172A]">2.4 Días</h3>
+            <Clock className="h-6 w-6 text-slate-300" strokeWidth={2.5} />
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+          <p className="text-sm text-slate-500 font-medium">Valor en Negociación</p>
+          <div className="flex items-end justify-between mt-2">
+            <h3 className="text-3xl font-bold text-emerald-500">S/ {totalValue.toLocaleString('es-PE')}</h3>
+            <Banknote className="h-6 w-6 text-emerald-300" strokeWidth={2.5} />
+          </div>
+        </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
+        <div className="w-full md:w-1/4">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Estado</label>
+          <div className="relative">
+            <select 
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 outline-none"
+            >
+              <option value="Todos">Todos los estados</option>
+              <option value="PENDING">En negociación</option>
+              <option value="QUOTED">Pendiente de formalización</option>
+              <option value="APPROVED">Aprobado</option>
+            </select>
+            <ChevronDown className="absolute right-2.5 top-3 h-4 w-4 text-slate-500 pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="w-full md:w-1/4">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Rango de Fecha</label>
+          <Input 
+            type="month" 
+            className="text-sm h-[42px]" 
+            value={dateFilter}
+            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+
+        <div className="w-full md:w-1/4">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Tipo de Prenda</label>
+          <div className="relative">
+            <select 
+              value={garmentFilter}
+              onChange={(e) => { setGarmentFilter(e.target.value); setCurrentPage(1); }}
+              className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 outline-none"
+            >
+              <option value="Todos">Cualquier prenda</option>
+              {uniqueGarmentTypes.map((type: string) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-3 h-4 w-4 text-slate-500 pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="w-full md:w-auto ml-auto">
+          <Button 
+            variant="outline" 
+            onClick={handleClearFilters}
+            className="w-full md:w-auto flex items-center gap-2 h-[42px] border-slate-300 text-slate-700"
+          >
+            <Filter className="h-4 w-4" /> Limpiar
+          </Button>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-slate-600 uppercase bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 font-semibold">ID</th>
+                <th className="px-6 py-4 font-semibold">CLIENTE</th>
+                <th className="px-6 py-4 font-semibold">FECHA Y HORA</th>
+                <th className="px-6 py-4 font-semibold">PRENDA</th>
+                <th className="px-6 py-4 font-semibold">ESTADO</th>
+                <th className="px-6 py-4 font-semibold">VALOR DE COTIZACIÓN</th>
+                <th className="px-6 py-4 font-semibold text-center">ACCIONES</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={7} className="text-center py-10 text-slate-500">Cargando negociaciones...</td></tr>
+              ) : paginatedQuotes.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-10 text-slate-500">No se encontraron negociaciones que coincidan con los filtros.</td></tr>
+              ) : (
+                paginatedQuotes.map((quote: any) => {
+                  const clientInitial = quote.client?.name?.charAt(0).toUpperCase() || "C";
                   
-                  {/* Content Column */}
-                  <div className="w-full md:w-3/5 p-5 flex flex-col">
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="outline" className="bg-slate-100 text-slate-700 font-mono text-xs border-transparent">#{q.id.slice(0, 8)}</Badge>
-                      {getStatusBadge(q.status)}
-                    </div>
-                    
-                    <h3 className="font-semibold text-slate-900 mb-1">{q.garmentType} {q.fabricType}</h3>
-                    <p className="text-sm text-slate-600 mb-1">Cliente: <span className="font-medium text-slate-900">{q.client?.name}</span></p>
-                    <p className="text-sm text-slate-600 mb-3">Cantidad: <span className="font-medium text-slate-900">{q.totalQuantity} unidades</span></p>
-                    
-                    {q.message && (
-                      <div className="bg-slate-50 p-3 rounded text-sm text-slate-700 italic border-l-2 border-slate-300 mb-4 flex-1">
-                        &quot;{q.message}&quot;
-                      </div>
-                    )}
-                    
-                    {q.status === "PENDING" && (
-                      <div className="grid grid-cols-2 gap-2 mt-auto pt-4">
-                        <Button 
-                          className="w-full bg-blue-600 hover:bg-blue-700" 
-                          onClick={() => { setSelectedQuote(q); setQuotedPrice(""); setMerchantMessage(""); setDialogType("RESPOND"); }}
+                  return (
+                    <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800">
+                        #NG-{quote.id.slice(0, 6).toUpperCase()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                            {clientInitial}
+                          </div>
+                          <span className="font-medium text-slate-900 line-clamp-1">{quote.client?.name || "Cliente General"}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
+                        {formatDateString(quote.createdAt)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="inline-flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200">
+                          <Shirt className="h-3.5 w-3.5 text-slate-500" />
+                          <span className="text-xs font-medium text-slate-700 line-clamp-1 max-w-[120px]" title={`${quote.garmentType} ${quote.fabricType}`}>
+                            {quote.garmentType}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {getStatusBadge(quote.status)}
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {quote.quotedPrice ? <span className="font-semibold text-slate-900">S/ {Number(quote.quotedPrice).toFixed(2)}</span> : "Por definir"}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {/* Enlace dinámico con el icono del Ojo */}
+                        <Link 
+                          href={`/gestion-cotizaciones/${quote.id}`}
+                          className="inline-flex p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                          title="Ver detalles de la negociación"
                         >
-                          <CheckCircle className="w-4 h-4 mr-2" /> Responder
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                          onClick={() => { setSelectedQuote(q); setUnfeasibleReason(""); setDialogType("UNFEASIBLE"); }}
-                        >
-                          <XCircle className="w-4 h-4 mr-2" /> Inviable
-                        </Button>
-                      </div>
-                    )}
+                          <Eye className="h-5 w-5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                    {q.status === "QUOTED" && (
-                      <div className="mt-auto pt-4 border-t text-sm">
-                        <p className="text-slate-500">Precio ofrecido: <strong className="text-slate-900">S/ {Number(q.quotedPrice).toFixed(2)}</strong></p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
+        {/* Pagination Footer - Completamente Dinámico */}
+        <div className="bg-slate-50 border-t border-slate-200 px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-600">
+          <div>
+            Mostrando <span className="font-semibold text-slate-900">
+              {filteredQuotes.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}-
+              {Math.min(currentPage * itemsPerPage, filteredQuotes.length)}
+            </span> de <span className="font-semibold text-slate-900">{filteredQuotes.length}</span> negociaciones
+          </div>
+          
+          <div className="flex items-center gap-1">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              className="p-1 border border-slate-200 rounded bg-white hover:bg-slate-50 text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+              <button
+                key={pageNumber}
+                onClick={() => setCurrentPage(pageNumber)}
+                className={`px-3 py-1 rounded font-medium text-xs transition-colors ${
+                  currentPage === pageNumber
+                    ? "bg-[#A0522D] text-white"
+                    : "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                }`}
+              >
+                {pageNumber}
+              </button>
             ))}
-          </div>
-        )}
-      </main>
 
-      {/* Dialog: Responder con Precio */}
-      <Dialog open={dialogType === "RESPOND"} onOpenChange={(open) => !open && setDialogType(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Responder Cotización #{selectedQuote?.id.slice(0, 8)}</DialogTitle>
-            <DialogDescription>
-              Propón un precio base o precio total para las {selectedQuote?.totalQuantity} unidades solicitadas.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Precio Cotizado (S/) *</label>
-              <Input 
-                type="number" 
-                step="0.01" 
-                placeholder="Ej. 1500.00" 
-                value={quotedPrice}
-                onChange={(e) => setQuotedPrice(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Mensaje para el Cliente</label>
-              <Textarea 
-                placeholder="Condiciones de entrega, aclaraciones sobre la tela..." 
-                rows={3}
-                value={merchantMessage}
-                onChange={(e) => setMerchantMessage(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogType(null)}>Cancelar</Button>
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700" 
-              onClick={() => respondMutation.mutate()} 
-              disabled={!quotedPrice || respondMutation.isPending}
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              className="p-1 border border-slate-200 rounded bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {respondMutation.isPending ? "Enviando..." : "Enviar Cotización"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
 
-      {/* Dialog: Marcar Inviable */}
-      <Dialog open={dialogType === "UNFEASIBLE"} onOpenChange={(open) => !open && setDialogType(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2"><XCircle className="w-5 h-5" /> Marcar como Inviable</DialogTitle>
-            <DialogDescription>
-              Explica al cliente por qué no es posible procesar su diseño o solicitud. Se generará un enlace para que el cliente pueda contactarte por WhatsApp y discutir alternativas.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Razón (Requerido) *</label>
-              <Textarea 
-                placeholder="Ej. El diseño tiene demasiados colores para este tipo de tela, la zona de impresión es inaccesible..." 
-                rows={4}
-                value={unfeasibleReason}
-                onChange={(e) => setUnfeasibleReason(e.target.value)}
-              />
+          <div className="flex items-center gap-2">
+            <span>Filas por página:</span>
+            <div className="relative">
+              <select disabled className="appearance-none bg-slate-100 border border-slate-200 text-slate-500 text-sm rounded focus:outline-none py-1 pl-2 pr-6 cursor-not-allowed">
+                <option>{itemsPerPage}</option>
+              </select>
+              <ChevronDown className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogType(null)}>Cancelar</Button>
-            <Button 
-              variant="destructive"
-              onClick={() => unfeasibleMutation.mutate()} 
-              disabled={!unfeasibleReason || unfeasibleMutation.isPending}
-            >
-              {unfeasibleMutation.isPending ? "Procesando..." : "Confirmar Inviabilidad"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
 
     </div>
   );
