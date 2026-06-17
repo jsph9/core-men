@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --color-whatsapp: #25d366;
+  --color-whatsapp-dark: #128c7e;
+}
+
 :root {
   --foreground: #171717;
   --background: #f8fafc;

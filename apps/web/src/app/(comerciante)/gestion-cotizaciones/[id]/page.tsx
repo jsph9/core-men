@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Image as ImageIcon,
   Banknote,
-  FileText
+  FileText,
+  Handshake
 } from "lucide-react";
 
 export default function DetalleCotizacion() {
@@ -53,11 +54,75 @@ export default function DetalleCotizacion() {
     { id: 3, element: "Logo Secundario", spec: "40mm Circular", location: "Manga Derecha", method: "Sublimado", methodColor: "bg-orange-100 text-orange-700" },
   ];
 
+  // Controla qué vista se muestra en el cuadro grande
+  const [selectedView, setSelectedView] = useState<"frontal" | "espalda" | "brazo_izq" | "brazo_der">("frontal");
+
+  // Las 4 imágenes fijas (usamos tu prenda base para la frontal y placeholders para el resto por ahora)
+  const mockViews = {
+    frontal: "/prenda-base.png", 
+    espalda: "/prenda-base2.png", 
+    brazo_izq: "/prenda-base3.jpg",
+    brazo_der: "/prenda-base4.jpg"
+  };
+
+
   if (isLoading) return <div className="p-8 text-center text-slate-500 flex h-64 items-center justify-center">Cargando detalles...</div>;
   if (!quote) return <div className="p-8 text-center text-red-500 flex flex-col h-64 items-center justify-center gap-2">
     <p className="font-bold text-lg">Cotización no encontrada.</p>
     <Link href="/gestion-cotizaciones" className="mt-4 text-blue-500 underline">Volver a la bandeja</Link>
   </div>;
+
+  // Mapa de productos base mock para redirección al catálogo
+  const mockBaseProducts: Record<string, { id: string; name: string; basePrice: number; category: string; fabric: string; image: string }> = {
+    "Polo Cuello Camisero": {
+      id: "polo-camisero-id",
+      name: "Polo Cuello Camisero",
+      basePrice: 35.00,
+      category: "Polos",
+      fabric: "Piqué",
+      image: "/prenda-base.png"
+    },
+    "Polera Oversize": {
+      id: "polera-oversize-id",
+      name: "Polera Oversize",
+      basePrice: 55.00,
+      category: "Poleras",
+      fabric: "Franela",
+      image: "/prenda-base2.png"
+    },
+    "Casaca Cortaviento": {
+      id: "casaca-cortaviento-id",
+      name: "Casaca Cortaviento",
+      basePrice: 75.00,
+      category: "Casacas",
+      fabric: "Taslan",
+      image: "/prenda-base3.jpg"
+    },
+    "Polo Básico": {
+      id: "polo-basico-id",
+      name: "Polo Básico",
+      basePrice: 25.00,
+      category: "Polos",
+      fabric: "Jersey",
+      image: "/prenda-base.png"
+    }
+  };
+
+  const garmentType = quote.garmentType || "Polo Cuello Camisero";
+  const baseProduct = mockBaseProducts[garmentType] || {
+    id: "polo-camisero-id",
+    name: garmentType,
+    basePrice: quote.quotedPrice ? Number(quote.quotedPrice) * 0.7 : 35.00,
+    category: "Prendas",
+    fabric: quote.fabricType || "Textil",
+    image: "/prenda-base.png"
+  };
+
+  const clientName = quote.client?.name || "Cliente General";
+  const initials = clientName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+  const rawPhone = quote.client?.whatsappNumber || "999999999";
+  const cleanPhone = rawPhone.replace(/\D/g, "");
+  const whatsappUrl = `https://wa.me/51${cleanPhone}?text=${encodeURIComponent(`Hola ${clientName}, me contacto por la cotización #${id?.slice(0, 6).toUpperCase()} en CoreMen.`)}`;
 
   return (
     // Contenedor principal ajustado para que el footer "sticky" funcione perfectamente
@@ -79,6 +144,7 @@ export default function DetalleCotizacion() {
           {/* ZONA BLANCA: DISEÑO SOLICITADO */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col">
+              
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
                   <ImageIcon className="h-5 w-5 text-orange-500" /> 
@@ -89,23 +155,49 @@ export default function DetalleCotizacion() {
                   <button className="hover:text-slate-700 p-1"><Download className="h-4 w-4" /></button>
                 </div>
               </div>
-              <div className="p-5 flex-1 flex flex-col">
-                {/* Solución a imágenes aplastadas: min-h explícito y flex-col */}
-                <div className="w-full bg-slate-100 rounded-lg min-h-[350px] flex flex-col items-center justify-center mb-4 relative overflow-hidden border border-slate-200">
-                  {quote.designImageUrl ? (
-                    <img src={quote.designImageUrl} alt="Diseño Principal" className="object-cover w-full h-full absolute inset-0" />
-                  ) : (
-                    <span className="text-slate-400 font-medium z-10 relative bg-slate-100/80 px-4 py-2 rounded">Render Final del Producto (Sin guías)</span>
-                  )}
-                  <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur text-xs px-3 py-1.5 rounded text-slate-700 font-medium shadow-sm z-10">
-                    Vista Frontal - {quote.garmentType} {quote.fabricType}
-                  </div>
+              
+              <div className="p-5 flex-1 flex flex-col gap-3">
+                {/* 1. IMAGEN PRINCIPAL (Altura fija de 350px para evitar que colapse) */}
+                <div 
+                  className="w-full bg-white rounded-lg border border-slate-200 flex items-center justify-center relative overflow-hidden"
+                  style={{ height: '400px' }} 
+                >
+                  <img 
+                    key={selectedView}
+                    src={mockViews[selectedView]} 
+                    alt={`Vista ${selectedView}`} 
+                    // Cambiamos a object-contain absoluto para forzar proporción
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain', 
+                      padding: '0rem' 
+                    }}
+                  />
                 </div>
-                <div className="flex gap-3">
-                  <div className="h-16 w-16 bg-slate-200 rounded border-2 border-blue-500 cursor-pointer shrink-0"></div>
-                  <div className="h-16 w-16 bg-slate-100 rounded border border-slate-200 cursor-pointer shrink-0"></div>
-                  <div className="h-16 w-16 bg-slate-50 rounded border border-slate-200 cursor-pointer flex items-center justify-center text-slate-400 text-xl font-light shrink-0">+</div>
+
+                {/* 2. LAS 4 MINIATURAS (Tamaño fijo de 5rem x 5rem) */}
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {(Object.keys(mockViews) as Array<keyof typeof mockViews>).map((view) => (
+                    <div 
+                      key={view}
+                      onClick={() => setSelectedView(view)}
+                      className={`h-20 w-20 bg-white rounded-lg border-2 cursor-pointer shrink-0 overflow-hidden relative transition-all flex items-center justify-center p-1 ${
+                        selectedView === view 
+                          ? 'border-blue-600 shadow-md' 
+                          : 'border-slate-200 hover:border-blue-300'
+                      }`}
+                    >
+                      <img 
+                        src={mockViews[view]} 
+                        alt={view} 
+                        // Aplicamos object-contain y bloqueamos cualquier crecimiento fuera de la caja
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                  ))}
                 </div>
+
               </div>
             </div>
 
@@ -160,31 +252,46 @@ export default function DetalleCotizacion() {
                   Observaciones del Cliente
                 </h3>
                 <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600 border border-slate-100">
-                  "{quote.message || "Sin observaciones adicionales proporcionadas por el cliente."}"
+                  {quote.message ? `"${quote.message}"` : '"Sin observaciones adicionales proporcionadas por el cliente."'}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                <div className="bg-slate-900 rounded-lg p-4 text-white shadow-sm">
-                  <p className="text-[10px] text-slate-400 font-semibold tracking-wider mb-1">COSTO BASE TOTAL</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-white whitespace-nowrap">
-                      S/ {quote.quotedPrice ? (Number(quote.quotedPrice) * 0.7).toFixed(2) : "0.00"}
-                    </span>
+                  <Link 
+                    href={`/catalogo/${baseProduct.id}`}
+                    className="bg-slate-900 rounded-lg p-4 text-white shadow-sm hover:bg-slate-800 transition-colors group cursor-pointer flex items-center gap-3 border border-slate-800"
+                  >
+                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center p-1 shrink-0 overflow-hidden border border-slate-700 shadow-sm">
+                      <img 
+                        src={baseProduct.image} 
+                        alt={baseProduct.name} 
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase mb-0.5">
+                        PRODUCTO BASE • ID: {baseProduct.id.toUpperCase()}
+                      </p>
+                      <h4 className="text-base font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1">
+                        {baseProduct.name}
+                      </h4>
+                      <p className="text-[10px] text-slate-400">
+                        {baseProduct.category} • {baseProduct.fabric}
+                      </p>
+                    </div>
+                  </Link>
+                  
+                  <div className="bg-slate-900 rounded-lg p-4 text-white shadow-sm border border-slate-800">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Banknote className="w-3 h-3 text-blue-400" />
+                      <p className="text-[10px] text-blue-300 font-semibold tracking-wider">VALOR DE COTIZACIÓN ESTIMADO</p>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-white whitespace-nowrap">
+                        S/ {quote.quotedPrice ? Number(quote.quotedPrice).toFixed(2) : "0.00"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="bg-slate-900 rounded-lg p-4 text-white shadow-sm border border-slate-800">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Banknote className="w-3 h-3 text-blue-400" />
-                    <p className="text-[10px] text-blue-300 font-semibold tracking-wider">COSTO CON PERSONALIZACIÓN</p>
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-white whitespace-nowrap">
-                      S/ {quote.quotedPrice ? Number(quote.quotedPrice).toFixed(2) : "0.00"}
-                    </span>
-                  </div>
-                </div>
-              </div>
               </div>
             </div>
           </div>
@@ -263,22 +370,16 @@ export default function DetalleCotizacion() {
                     </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center justify-end gap-3 mt-2">
-                  <p className="text-sm text-slate-300 font-medium">{quote.garmentType} Base - ID=12384</p>
-                  <Button className="bg-[#B45309] hover:bg-[#92400E] text-white flex items-center gap-2 border-none shrink-0">
-                    <Eye className="h-4 w-4" /> Ver Producto Base
-                  </Button>
-                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-     {/* BOTONERA INFERIOR: Cuadrícula uniforme para llenar todo el ancho */}
-      <div className="sticky bottom-0 bg-white border-t border-slate-200 px-6 py-4 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.05)] z-40 mt-auto">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* BOTONERA INFERIOR: Contenedor sticky transparente de ancho completo para garantizar el seguimiento */}
+      <div className="sticky bottom-0 w-full z-40 bg-transparent mt-auto">
+        <div className="bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.08),_0_-10px_15px_-3px_rgba(0,0,0,0.03)] mx-6 mb-6">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
           <Button 
             className="w-full h-12 text-base bg-red-600 hover:bg-red-700 text-white" 
@@ -312,6 +413,7 @@ export default function DetalleCotizacion() {
           
         </div>
       </div>
+      </div>
 
 
       {/* MODALES */}
@@ -331,12 +433,61 @@ export default function DetalleCotizacion() {
       </Dialog>
 
       <Dialog open={activeModal === "WHATSAPP"} onOpenChange={(open) => !open && setActiveModal(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="flex items-center gap-2 text-slate-800"><ExternalLink className="w-5 h-5 text-blue-500" /> Negociación Externa</DialogTitle></DialogHeader>
-          <div className="py-6 flex flex-col items-center bg-slate-50 rounded-lg mt-2 border border-slate-100">
-            <h3 className="font-bold text-slate-900 text-lg">{quote.client?.name || "Cliente"}</h3>
-            <Button className="w-full max-w-xs mt-4 bg-[#25D366] hover:bg-[#128C7E] text-white flex gap-2"><MessageSquare className="w-4 h-4" /> Abrir WhatsApp Web</Button>
+        <DialogContent className="max-w-md p-6 bg-white rounded-2xl border border-slate-200 shadow-xl">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="flex items-center gap-3 text-slate-900 text-xl font-bold">
+              <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl shrink-0">
+                <Handshake className="w-5 h-5" />
+              </div>
+              Iniciar Negociación Externa
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 text-sm leading-relaxed pt-2">
+              Estás por iniciar una comunicación directa con el cliente. Utiliza este canal para coordinar los detalles finales, confirmar especificaciones de diseño y avanzar con la formalización de la cotización.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mt-2">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">Contacto Responsable</span>
+              {quote.client?.isVerified !== false && (
+                <span className="text-[10px] bg-green-50 border border-green-200 text-green-700 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
+                  Verificado
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-base shrink-0">
+                {initials}
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 text-base leading-tight">{clientName}</h4>
+                <p className="text-sm font-bold text-slate-800 mt-1">
+                  +51 {rawPhone}
+                </p>
+              </div>
+            </div>
           </div>
+
+          <button 
+            className="w-full h-12 mt-4 bg-whatsapp hover:bg-whatsapp-dark text-white flex items-center justify-center gap-2 rounded-xl text-base font-semibold transition-colors shadow-sm cursor-pointer"
+            onClick={() => window.open(whatsappUrl, "_blank")}
+          >
+            <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
+              <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.907.534 3.705 1.464 5.253L2 22l4.908-1.428a9.962 9.962 0 005.096 1.436c5.524 0 10.004-4.48 10.004-10.004C22.008 6.48 17.528 2 12.004 2zm5.834 14.264c-.256.72-.98 1.284-1.724 1.488-.507.14-1.17.25-3.35-.612-2.784-1.1-4.577-3.92-4.717-4.108-.14-.188-1.133-1.503-1.133-2.867 0-1.364.713-2.035.966-2.307.253-.272.553-.34.74-.34.187 0 .374.003.535.011.166.008.39-.06.61.472.227.548.777 1.895.845 2.03.068.136.113.294.022.476-.09.182-.136.294-.272.453-.136.159-.286.355-.408.476-.136.136-.278.284-.12.556.158.272.705 1.157 1.51 1.874.805.717 1.48.937 1.747 1.073.267.136.42.114.578-.068.158-.182.68-.792.861-1.063.181-.271.363-.227.61-.136.248.09 1.574.743 1.846.879.271.136.452.204.52.317.068.113.068.653-.188 1.373z"/>
+            </svg>
+            Contactar por WhatsApp
+          </button>
+
+          <DialogFooter className="mt-4 flex justify-end">
+            <Button 
+              variant="ghost" 
+              className="text-slate-600 hover:text-slate-900 text-sm font-semibold hover:bg-slate-50"
+              onClick={() => setActiveModal(null)}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
