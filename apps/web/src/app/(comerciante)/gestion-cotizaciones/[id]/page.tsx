@@ -20,8 +20,43 @@ import {
   Image as ImageIcon,
   Banknote,
   FileText,
-  Handshake
+  Handshake,
+  Check,
+  Scale,
+  ClipboardCheck
 } from "lucide-react";
+
+const formatStepperDate = (dateString: string) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${day}/${month} - ${hours}:${minutes}`;
+};
+
+const getActiveStep = (status: string): number => {
+  switch (status) {
+    case "PENDING":
+      return 1;
+    case "QUOTED":
+      return 2;
+    case "APPROVED":
+    case "REJECTED":
+    case "UNFEASIBLE":
+      return 3;
+    default:
+      return 0;
+  }
+};
+
+const stepperSteps = [
+  { label: "No Visitado", icon: Eye },
+  { label: "Revisado", icon: Search },
+  { label: "Viabilidad", icon: Scale },
+  { label: "Estado Cotización", icon: ClipboardCheck },
+];
 
 export default function DetalleCotizacion() {
   const router = useRouter();
@@ -129,14 +164,129 @@ export default function DetalleCotizacion() {
     <div className="font-sans w-full relative flex flex-col min-h-[calc(100vh-4rem)]">
       
       <div className="flex-1 pb-8">
-        {/* Breadcrumb */}
-        <div className="bg-white border border-slate-200 rounded-xl px-6 py-4 mb-6 flex items-center gap-4 shadow-sm mx-6 mt-6">
-          <Link href="/gestion-cotizaciones" className="p-2 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-600 transition-colors">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-          <div>
-            <p className="text-xs text-slate-500 mb-0.5">Cotizaciones {'>'} <span className="font-semibold text-slate-900">Cotización #{id?.slice(0, 6).toUpperCase()}</span></p>
-            <h1 className="text-2xl font-bold text-[#0F172A]">Detalle de Cotización</h1>
+        {/* Breadcrumb & Stepper */}
+        <div className="bg-white border border-slate-200 rounded-xl p-6 mb-6 flex flex-col gap-6 shadow-sm mx-6 mt-6">
+          {/* Fila superior: Breadcrumb y Título */}
+          <div className="flex items-center gap-4">
+            <Link href="/gestion-cotizaciones" className="p-2 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-600 transition-colors">
+              <ChevronLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <p className="text-xs text-slate-500 mb-0.5">Cotizaciones {'>'} <span className="font-semibold text-slate-900">Cotización #{id?.slice(0, 6).toUpperCase()}</span></p>
+              <h1 className="text-2xl font-bold text-[#0F172A]">Detalle de Cotización</h1>
+            </div>
+          </div>
+
+          {/* Información del Cliente y Fecha */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:gap-x-12 gap-y-4 px-1 py-1 text-slate-700">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Cliente Solicitante</p>
+              <p className="text-base font-bold text-slate-800">{clientName}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Fecha de Creación</p>
+              <p className="text-base font-bold text-slate-800">
+                {quote?.createdAt ? new Date(quote.createdAt).toLocaleDateString('es-ES', { 
+                  day: '2-digit', 
+                  month: 'long', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : "Fecha no disponible"}
+              </p>
+            </div>
+          </div>
+
+          {/* Stepper Timeline */}
+          <div className="border-t border-slate-100 pt-6">
+            <div className="flex items-center w-full max-w-4xl mx-auto py-2">
+              {stepperSteps.map((step, idx) => {
+                const activeStep = getActiveStep(quote?.status);
+                const isCompleted = idx < activeStep;
+                const isActive = idx === activeStep;
+                const isPending = idx > activeStep;
+                const StepIcon = step.icon;
+
+                // Determinar el texto secundario dinámico
+                let secondaryText = "Pendiente";
+                let secondaryTextColor = "text-slate-400";
+
+                if (isCompleted) {
+                  if (idx === 0 && quote?.createdAt) {
+                    secondaryText = formatStepperDate(quote.createdAt);
+                  } else {
+                    secondaryText = "Completado";
+                  }
+                  secondaryTextColor = "text-slate-500";
+                } else if (isActive) {
+                  secondaryTextColor = "text-[#A0522D] font-semibold";
+                  if (quote?.status === "APPROVED") {
+                    secondaryText = "Aprobado";
+                    secondaryTextColor = "text-emerald-600 font-semibold";
+                  } else if (quote?.status === "REJECTED") {
+                    secondaryText = "Rechazado";
+                    secondaryTextColor = "text-red-600 font-semibold";
+                  } else if (quote?.status === "UNFEASIBLE") {
+                    secondaryText = "No Viable";
+                    secondaryTextColor = "text-amber-600 font-semibold";
+                  } else {
+                    secondaryText = "En progreso...";
+                  }
+                }
+
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center relative">
+                    {/* Conector izquierdo */}
+                    {idx > 0 && (
+                      <div 
+                        className={`absolute left-0 right-1/2 top-6 h-[4px] -translate-y-1/2 z-0 transition-all duration-500 ${
+                          isCompleted || isActive ? "bg-[#A0522D]" : "bg-slate-200"
+                        }`}
+                      />
+                    )}
+                    {/* Conector derecho */}
+                    {idx < stepperSteps.length - 1 && (
+                      <div 
+                        className={`absolute left-1/2 right-0 top-6 h-[4px] -translate-y-1/2 z-0 transition-all duration-500 ${
+                          isCompleted ? "bg-[#A0522D]" : "bg-slate-200"
+                        }`}
+                      />
+                    )}
+
+                    {/* Círculo del paso */}
+                    {isCompleted ? (
+                      <div className="relative z-10 flex items-center justify-center w-12 h-12">
+                        <div className="w-9 h-9 rounded-full bg-[#A0522D] text-white flex items-center justify-center shadow-md">
+                          <Check className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                      </div>
+                    ) : isActive ? (
+                      <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-orange-100/70 border border-orange-200/50 shadow-sm">
+                        <div className="w-9 h-9 rounded-full bg-[#A0522D] text-white flex items-center justify-center shadow-md animate-pulse-subtle">
+                          <StepIcon className="w-4.5 h-4.5" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative z-10 flex items-center justify-center w-12 h-12">
+                        <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center">
+                          <StepIcon className="w-4.5 h-4.5" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Nombres principales y secundarios */}
+                    <div className="text-center mt-3 px-1">
+                      <p className={`text-sm font-bold leading-tight ${isPending ? "text-slate-400" : "text-slate-800"}`}>
+                        {step.label}
+                      </p>
+                      <p className={`text-[11px] mt-0.5 whitespace-nowrap ${secondaryTextColor}`}>
+                        {secondaryText}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -393,7 +543,7 @@ export default function DetalleCotizacion() {
             className="w-full h-12 text-base border-slate-300 text-slate-700 hover:bg-slate-50 font-medium" 
             onClick={() => router.push(`/gestion-cotizaciones/${id}/formalizar`)}
           >
-            Formalizar Cotización
+            Actualizar Información
           </Button>
           
           <Button 
