@@ -38,7 +38,7 @@ export default function CotizacionesComerciante() {
   const uniqueGarmentTypes = useMemo(() => {
     if (!quotes || quotes.length === 0) return [];
     const types = quotes.map((q: any) => q.garmentType);
-    return Array.from(new Set(types));
+    return Array.from(new Set(types)) as string[];
   }, [quotes]);
 
   // 5. Cálculos fijos para los KPIs superiores (Datos globales históricos)

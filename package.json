@@ -15,12 +15,12 @@
     "build:api": "npm run build --workspace=apps/api-nest",
     "build:web": "npm run build --workspace=apps/web",
     "lint:web": "npm run lint --workspace=apps/web",
-    "test:http": "npm exec --workspace=apps/api ts-node-dev --transpile-only ../../test-http.ts",
-    "test:e2e": "npm exec --workspace=apps/api ts-node-dev --transpile-only ../../test-e2e.ts",
-    "db:migrate": "npm run db:migrate --workspace=apps/api",
-    "db:seed": "npm run db:seed --workspace=apps/api",
-    "db:studio": "npm run db:studio --workspace=apps/api",
-    "db:generate": "npm run db:generate --workspace=apps/api"
+    "test:http": "npm exec --workspace=apps/api-nest ts-node --transpile-only ../../test-http.ts",
+    "test:e2e": "npm exec --workspace=apps/api-nest ts-node --transpile-only ../../test-e2e.ts",
+    "db:migrate": "npm run db:migrate --workspace=apps/api-nest",
+    "db:seed": "npm run db:seed --workspace=apps/api-nest",
+    "db:studio": "npm run db:studio --workspace=apps/api-nest",
+    "db:generate": "npm run db:generate --workspace=apps/api-nest"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
