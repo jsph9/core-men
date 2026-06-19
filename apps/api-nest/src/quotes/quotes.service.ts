@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { QuoteMacroStatus, ViabilityStatus, FormalizationStatus } from '@prisma/client';
+import { QuoteMacroStatus, ViabilityStatus, ClientFormalizationStatus, CustomerResponseStatus } from '@prisma/client';
 import { CreateQuoteDto, RespondQuoteDto, MarkUnfeasibleDto } from './dto/quotes.dto';
 
 @Injectable()
@@ -209,7 +209,8 @@ export class QuotesService {
       where: { id },
       data: {
         status: QuoteMacroStatus.WAITING_PAYMENT,
-        formalizationStatus: FormalizationStatus.CONFIRMED,
+        clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED,
+        customerResponseStatus: CustomerResponseStatus.CONFIRMED,
         statusHistory: {
           create: {
             changedField: 'STATUS',

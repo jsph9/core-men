@@ -338,12 +338,20 @@ enum ViabilityStatus {
   PENDING
   VIABLE
   NONVIABLE
+  EXPIRED
 }
 
-enum FormalizationStatus {
+enum CustomerResponseStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  UPDATED
+  IN_NEGOTIATION 
+  EXPIRED
+}
+
+enum ClientFormalizationStatus {
   PENDING         // Esperando que el cliente acepte
-  IN_NEGOTIATION  // Hablando por WhatsApp
-  UPDATED         // Precio/Diseño ajustado, listo para pago
   CONFIRMED       // Cliente aceptó la propuesta
   REJECTED        // Cliente dijo explícitamente "No"
   EXPIRED         // Cliente no respondió en el tiempo límite
@@ -370,7 +378,8 @@ model Quote {
   status    QuoteMacroStatus @default(PENDING)
   isVisited  Boolean @default(false)
   viabilityStatus ViabilityStatus @default(PENDING)
-  formalizationStatus FormalizationStatus @default(PENDING)
+  customerResponseStatus CustomerResponseStatus @default(PENDING)
+  clientFormalizationStatus ClientFormalizationStatus @default(PENDING)
 
   //Fechas 
   createdAt DateTime    @default(now())
