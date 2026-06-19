@@ -25,7 +25,7 @@ const productSchema = z.object({
   imageUrl: z.string().url("Debe ser una URL de imagen válida").optional().or(z.literal("")),
   variants: z.array(z.object({
     sizeId: z.string().min(1, "Selecciona una talla"),
-    color: z.string().min(1, "Ingresa un color"),
+    colorId: z.string().min(1, "Selecciona un color"),
     stock: z.coerce.number().min(0, "El stock no puede ser negativo"),
     price: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
     discountPct: z.coerce.number().min(0).max(100).optional().or(z.literal("").transform(() => undefined))
@@ -53,7 +53,7 @@ export default function NuevoProductoPage() {
       sizeGuideText: "",
       isBaseProduct: true,
       imageUrl: "",
-      variants: [{ sizeId: "", color: "", stock: 0 }]
+      variants: [{ sizeId: "", colorId: "", stock: 0 }]
     }
   });
 
@@ -82,7 +82,7 @@ export default function NuevoProductoPage() {
     return <div className="p-8 text-center text-slate-500">Cargando atributos del sistema...</div>;
   }
 
-  const { categories, fabrics, sizes } = attributes || { categories: [], fabrics: [], sizes: [] };
+  const { categories, fabrics, sizes, colors } = attributes || { categories: [], fabrics: [], sizes: [], colors: [] };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
@@ -184,7 +184,7 @@ export default function NuevoProductoPage() {
               <CardTitle className="text-lg">Variantes (Tallas y Colores)</CardTitle>
               <CardDescription>Añade el inventario específico para cada combinación.</CardDescription>
             </div>
-            <Button type="button" size="sm" variant="outline" className="bg-white" onClick={() => append({ sizeId: "", color: "", stock: 0 })}>
+            <Button type="button" size="sm" variant="outline" className="bg-white" onClick={() => append({ sizeId: "", colorId: "", stock: 0 })}>
               <Plus className="h-4 w-4 mr-2" /> Añadir Variante
             </Button>
           </CardHeader>
@@ -210,8 +210,16 @@ export default function NuevoProductoPage() {
                   
                   <div className="flex-1 space-y-2 w-full md:w-auto">
                     <label className="text-xs font-semibold text-slate-500 uppercase">Color *</label>
-                    <Input {...form.register(`variants.${index}.color`)} placeholder="Ej. Negro" className="bg-white" />
-                    {form.formState.errors.variants?.[index]?.color && <p className="text-xs text-red-500">{form.formState.errors.variants[index]?.color?.message}</p>}
+                    <select 
+                      {...form.register(`variants.${index}.colorId`)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">Color...</option>
+                      {colors.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    {form.formState.errors.variants?.[index]?.colorId && <p className="text-xs text-red-500">{form.formState.errors.variants[index]?.colorId?.message}</p>}
                   </div>
 
                   <div className="w-full md:w-24 space-y-2">

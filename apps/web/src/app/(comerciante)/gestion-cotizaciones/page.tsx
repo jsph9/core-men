@@ -37,10 +37,16 @@ export default function CotizacionesComerciante() {
   // 4. Extracción dinámica de Tipos de Prenda únicos de la BD para el menú desplegable
   const uniqueGarmentTypes = useMemo(() => {
     if (!quotes || quotes.length === 0) return [];
-    const types = quotes
-      .map((q: any) => q.garmentType)
-      .filter((t: any): t is string => typeof t === "string" && t.trim() !== "" && t !== "Todos");
-    return Array.from(new Set(types)) as string[];
+    const typesSet = new Set<string>();
+    quotes.forEach((q: any) => {
+      if (q.items) {
+        q.items.forEach((item: any) => {
+          const catName = item.productVariant?.product?.category?.name;
+          if (catName) typesSet.add(catName);
+        });
+      }
+    });
+    return Array.from(typesSet) as string[];
   }, [quotes]);
 
   // 5. Cálculos fijos para los KPIs superiores (Datos globales históricos)
@@ -58,7 +64,8 @@ export default function CotizacionesComerciante() {
       if (statusFilter === "APPROVED") matchesStatus = quote.status === "APPROVED";
 
       // Filtro de Tipo de Prenda
-      const matchesGarment = garmentFilter === "Todos" || quote.garmentType === garmentFilter;
+      const garmentNames = quote.items?.map((item: any) => item.productVariant?.product?.category?.name) || [];
+      const matchesGarment = garmentFilter === "Todos" || garmentNames.includes(garmentFilter);
 
       // Filtro de Fecha (Año-Mes)
       let matchesDate = true;
@@ -251,8 +258,18 @@ export default function CotizacionesComerciante() {
                 <tr><td colSpan={7} className="text-center py-10 text-slate-500">No se encontraron negociaciones que coincidan con los filtros.</td></tr>
               ) : (
                 paginatedQuotes.map((quote: any) => {
-                  const clientInitial = quote.client?.name?.charAt(0).toUpperCase() || "C";
+                  const clientFullName = quote.client 
+                    ? `${quote.client.firstName} ${quote.client.lastName} ${quote.client.maternalLastName || ""}`.trim() 
+                    : "Cliente General";
+                  const clientInitial = clientFullName.charAt(0).toUpperCase() || "C";
                   
+                  const garmentText = quote.items && quote.items.length > 0 
+                    ? Array.from(new Set(quote.items.map((item: any) => item.productVariant?.product?.category?.name))).filter(Boolean).join(", ")
+                    : "Prenda";
+                  const fabricText = quote.items && quote.items.length > 0
+                    ? Array.from(new Set(quote.items.map((item: any) => item.productVariant?.product?.fabric?.value))).filter(Boolean).join(", ")
+                    : "Tela";
+
                   return (
                     <tr key={quote.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 font-bold text-slate-800">
@@ -263,7 +280,7 @@ export default function CotizacionesComerciante() {
                           <div className="w-8 h-8 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
                             {clientInitial}
                           </div>
-                          <span className="font-medium text-slate-900 line-clamp-1">{quote.client?.name || "Cliente General"}</span>
+                          <span className="font-medium text-slate-900 line-clamp-1">{clientFullName}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-slate-600 whitespace-nowrap">
@@ -272,8 +289,8 @@ export default function CotizacionesComerciante() {
                       <td className="px-6 py-4">
                         <div className="inline-flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200">
                           <Shirt className="h-3.5 w-3.5 text-slate-500" />
-                          <span className="text-xs font-medium text-slate-700 line-clamp-1 max-w-[120px]" title={`${quote.garmentType} ${quote.fabricType}`}>
-                            {quote.garmentType}
+                          <span className="text-xs font-medium text-slate-700 line-clamp-1 max-w-[120px]" title={`${garmentText} ${fabricText}`}>
+                            {garmentText}
                           </span>
                         </div>
                       </td>

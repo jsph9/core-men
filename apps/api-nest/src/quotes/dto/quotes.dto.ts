@@ -1,53 +1,70 @@
-import { IsString, IsNumber, IsOptional, Min, IsEnum } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, IsEnum, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { DesignPlacement } from '@prisma/client';
+
+export class QuoteItemDto {
+  @IsString()
+  productVariantId: string;
+
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+}
+
+export class DesignDto {
+  @IsEnum(DesignPlacement)
+  placement: DesignPlacement;
+
+  @IsString()
+  techniqueId: string;
+
+  @IsString()
+  baseGarmentUrl: string;
+
+  @IsString()
+  logoUrl: string;
+
+  @IsNumber()
+  positionX: number;
+
+  @IsNumber()
+  positionY: number;
+
+  @IsNumber()
+  width: number;
+
+  @IsNumber()
+  height: number;
+
+  @IsNumber()
+  rotation: number;
+
+  @IsNumber()
+  canvasWidth: number;
+
+  @IsNumber()
+  canvasHeight: number;
+}
 
 export class CreateQuoteDto {
-  @IsString()
-  garmentType: string;
-
-  @IsString()
-  fabricType: string;
-
-  @IsString()
-  color: string;
-
   @IsNumber()
   @Min(1)
   totalQuantity: number;
 
   @IsOptional()
   @IsString()
-  designImageUrl?: string;
-
-  @IsOptional()
-  @IsString()
-  designZone?: string;
-
-  @IsOptional()
-  @IsNumber()
-  designX?: number;
-
-  @IsOptional()
-  @IsNumber()
-  designY?: number;
-
-  @IsOptional()
-  @IsNumber()
-  designScaleX?: number;
-
-  @IsOptional()
-  @IsNumber()
-  designScaleY?: number;
-
-  @IsOptional()
-  @IsNumber()
-  designRotation?: number;
-
-  @IsOptional()
-  @IsString()
   message?: string;
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuoteItemDto)
+  items: QuoteItemDto[];
+
   @IsOptional()
-  items?: any;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DesignDto)
+  designs?: DesignDto[];
 }
 
 export class RespondQuoteDto {

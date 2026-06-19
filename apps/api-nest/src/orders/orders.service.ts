@@ -133,16 +133,7 @@ export class OrdersService {
       return b.createdAt.getTime() - a.createdAt.getTime();
     });
 
-    return sorted.map((order) => ({
-      ...order,
-      items: order.items.map((item) => ({
-        ...item,
-        productVariant: {
-          ...item.productVariant,
-          color: (item.productVariant as any).color?.name || '',
-        },
-      })),
-    }));
+    return sorted;
   }
 
   async getMerchantOrders() {
@@ -181,13 +172,7 @@ export class OrdersService {
           name,
           email: user?.email || ''
         },
-        items: items.map((item) => ({
-          ...item,
-          productVariant: {
-            ...item.productVariant,
-            color: (item.productVariant as any).color?.name || '',
-          },
-        })),
+        items,
       };
     });
   }
@@ -206,16 +191,7 @@ export class OrdersService {
       throw new BadRequestException('Pedido no encontrado');
     }
 
-    return {
-      ...order,
-      items: order.items.map((item) => ({
-        ...item,
-        productVariant: {
-          ...item.productVariant,
-          color: (item.productVariant as any).color?.name || '',
-        },
-      })),
-    };
+    return order;
   }
 
   async updateOrderStatus(orderId: string, status: OrderStatus, merchantId: string, reason?: string) {

@@ -64,10 +64,7 @@ export class CartService {
           cartId: item.cartId,
           productVariantId: item.productVariantId,
           quantity: item.quantity,
-          productVariant: {
-            ...item.productVariant,
-            color: (item.productVariant as any).color?.name || '',
-          },
+          productVariant: item.productVariant,
           appliedDiscountPct: discountInfo.appliedPercentage,
           discountType: discountInfo.type,
           originalUnitPrice: Number(basePrice),

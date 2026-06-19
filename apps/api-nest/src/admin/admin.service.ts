@@ -37,36 +37,11 @@ export class AdminService {
       });
 
       if (data.variants && data.variants.length > 0) {
-        // Resolve all unique colors
-        const uniqueColors = Array.from(new Set(data.variants.map(v => v.color)));
-        const colorMap = new Map<string, string>();
-        for (const colorStr of uniqueColors) {
-          const cleanColor = colorStr.trim();
-          let colorRecord = await tx.color.findFirst({
-            where: {
-              OR: [
-                { name: { equals: cleanColor, mode: 'insensitive' } },
-                { hexCode: { equals: cleanColor, mode: 'insensitive' } }
-              ]
-            }
-          });
-          if (!colorRecord) {
-            const isHex = cleanColor.startsWith('#');
-            colorRecord = await tx.color.create({
-              data: {
-                name: isHex ? `Color ${cleanColor}` : cleanColor,
-                hexCode: isHex ? cleanColor : '#000000',
-              }
-            });
-          }
-          colorMap.set(colorStr, colorRecord.id);
-        }
-
         await tx.productVariant.createMany({
           data: data.variants.map((v) => ({
             productId: product.id,
             sizeId: v.sizeId,
-            colorId: colorMap.get(v.color)!,
+            colorId: v.colorId,
             stock: v.stock,
             price: v.price ?? null,
             discountPct: v.discountPct ?? null,
@@ -78,14 +53,7 @@ export class AdminService {
         where: { id: product.id },
         include: { variants: { include: { size: true, color: true } }, images: true, category: true, fabric: true, sizeGuide: true },
       });
-      if (!createdProd) return null;
-      return {
-        ...createdProd,
-        variants: createdProd.variants.map((v) => ({
-          ...v,
-          color: v.color?.name || '',
-        })),
-      };
+      return createdProd;
     });
   }
 
@@ -121,34 +89,9 @@ export class AdminService {
 
       if (data.variants) {
         if (data.variants.length > 0) {
-          // Resolve all unique colors
-          const uniqueColors = Array.from(new Set(data.variants.map(v => v.color)));
-          const colorMap = new Map<string, string>();
-          for (const colorStr of uniqueColors) {
-            const cleanColor = colorStr.trim();
-            let colorRecord = await tx.color.findFirst({
-              where: {
-                OR: [
-                  { name: { equals: cleanColor, mode: 'insensitive' } },
-                  { hexCode: { equals: cleanColor, mode: 'insensitive' } }
-                ]
-              }
-            });
-            if (!colorRecord) {
-              const isHex = cleanColor.startsWith('#');
-              colorRecord = await tx.color.create({
-                data: {
-                  name: isHex ? `Color ${cleanColor}` : cleanColor,
-                  hexCode: isHex ? cleanColor : '#000000',
-                }
-              });
-            }
-            colorMap.set(colorStr, colorRecord.id);
-          }
-
           const keepCombinations = data.variants.map(v => ({
             sizeId: v.sizeId,
-            colorId: colorMap.get(v.color)!,
+            colorId: v.colorId,
           }));
 
           await tx.productVariant.updateMany({
@@ -157,13 +100,12 @@ export class AdminService {
           });
 
           for (const v of data.variants) {
-            const colorId = colorMap.get(v.color)!;
             await tx.productVariant.upsert({
               where: {
                 productId_sizeId_colorId: {
                   productId: id,
                   sizeId: v.sizeId,
-                  colorId,
+                  colorId: v.colorId,
                 }
               },
               update: {
@@ -175,7 +117,7 @@ export class AdminService {
               create: {
                 productId: id,
                 sizeId: v.sizeId,
-                colorId,
+                colorId: v.colorId,
                 stock: v.stock,
                 price: v.price ?? null,
                 discountPct: v.discountPct ?? null,
@@ -201,14 +143,7 @@ export class AdminService {
           sizeGuide: true,
         },
       });
-      if (!updatedProd) return null;
-      return {
-        ...updatedProd,
-        variants: updatedProd.variants.map((v) => ({
-          ...v,
-          color: v.color?.name || '',
-        })),
-      };
+      return updatedProd;
     });
   }
 
@@ -251,12 +186,14 @@ export class AdminService {
   // ──── Attributes ────────────────────────────────────────────────────────
   async getAttributes(includeInactive: boolean) {
     const where = includeInactive ? undefined : { isActive: true };
-    const [categories, fabrics, sizes] = await Promise.all([
+    const [categories, fabrics, sizes, colors, techniques] = await Promise.all([
       this.prisma.category.findMany({ where, orderBy: { name: 'asc' } }),
       this.prisma.fabricAttribute.findMany({ where, orderBy: { value: 'asc' } }),
       this.prisma.sizeAttribute.findMany({ where, orderBy: { value: 'asc' } }),
+      this.prisma.color.findMany({ where, orderBy: { name: 'asc' } }),
+      this.prisma.technique.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } }),
     ]);
-    return { categories, fabrics, sizes };
+    return { categories, fabrics, sizes, colors, techniques };
   }
 
   async createCategory(name: string, userId: string, ipAddress?: string) {
@@ -493,13 +430,15 @@ export class AdminService {
   // ──── User Management ──────────────────────────────────────────────────
   async getUsers() {
     const users = await this.prisma.user.findMany({
-      select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, createdAt: true, lockedUntil: true },
+      select: { id: true, email: true, firstName: true, lastName: true, maternalLastName: true, role: true, isActive: true, createdAt: true, lockedUntil: true },
       orderBy: { createdAt: 'desc' },
     });
     return users.map((user) => ({
       id: user.id,
       email: user.email,
-      name: `${user.firstName} ${user.lastName || ''}`.trim(),
+      firstName: user.firstName,
+      lastName: user.lastName,
+      maternalLastName: user.maternalLastName,
       role: user.role,
       isActive: user.isActive,
       createdAt: user.createdAt,
@@ -508,7 +447,7 @@ export class AdminService {
   }
 
   async createUser(data: any, adminId: string, ipAddress?: string) {
-    if (!data.email || !data.password || !data.name || !data.role) {
+    if (!data.email || !data.password || !data.firstName || !data.lastName || !data.role) {
       throw new BadRequestException('Faltan campos requeridos.');
     }
     const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
@@ -517,51 +456,35 @@ export class AdminService {
     }
     const passwordHash = await bcrypt.hash(data.password, 12);
 
-    let firstName = data.firstName || '';
-    let lastName = data.lastName || '';
-    if (!firstName && data.name) {
-      const parts = data.name.trim().split(/\s+/);
-      firstName = parts[0] || '';
-      lastName = parts.slice(1).join(' ') || '';
-    }
-
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
-        firstName,
-        lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        maternalLastName: data.maternalLastName || null,
         passwordHash,
         role: data.role,
         isActive: data.isActive ?? true,
       }
     });
 
-    const fullName = `${user.firstName} ${user.lastName || ''}`.trim();
-
     await this.auditService.logAudit({
       type: 'USER_MGMT',
       userId: adminId,
       entityType: 'User',
       entityId: user.id,
-      newValue: { name: fullName, email: user.email, role: user.role, isActive: user.isActive },
+      newValue: { firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.role, isActive: user.isActive },
       ipAddress,
     });
 
-    return {
-      ...user,
-      name: fullName,
-    };
+    return user;
   }
 
   async updateUser(id: string, data: any, adminId: string, ipAddress?: string) {
     const updateData: any = {};
-    if (data.name !== undefined) {
-      const parts = data.name.trim().split(/\s+/);
-      updateData.firstName = parts[0] || '';
-      updateData.lastName = parts.slice(1).join(' ') || '';
-    }
     if (data.firstName !== undefined) updateData.firstName = data.firstName;
     if (data.lastName !== undefined) updateData.lastName = data.lastName;
+    if (data.maternalLastName !== undefined) updateData.maternalLastName = data.maternalLastName || null;
     if (data.email !== undefined) updateData.email = data.email;
     if (data.role !== undefined) updateData.role = data.role;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
@@ -574,21 +497,16 @@ export class AdminService {
       data: updateData,
     });
 
-    const fullName = `${updated.firstName} ${updated.lastName || ''}`.trim();
-
     await this.auditService.logAudit({
       type: 'USER_MGMT',
       userId: adminId,
       entityType: 'User',
       entityId: id,
-      newValue: { name: fullName, email: updated.email, role: updated.role, isActive: updated.isActive },
+      newValue: { firstName: updated.firstName, lastName: updated.lastName, email: updated.email, role: updated.role, isActive: updated.isActive },
       ipAddress,
     });
 
-    return {
-      ...updated,
-      name: fullName,
-    };
+    return updated;
   }
 
   async revokeUser(id: string, adminId: string, ipAddress?: string) {

@@ -12,7 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { apiPost } from "@/lib/api";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Nombre muy corto"),
+  firstName: z.string().min(2, "Nombre muy corto"),
+  lastName: z.string().min(2, "Apellido paterno muy corto"),
+  maternalLastName: z.string().optional(),
   email: z.string().email("Email inválido"),
   role: z.enum(["CLIENT", "MERCHANT"]),
   password: z.string().min(8, "Mínimo 8 caracteres").max(16, "Máximo 16 caracteres")
@@ -28,13 +30,20 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { role: "CLIENT" },
+    defaultValues: { role: "CLIENT", maternalLastName: "" },
   });
 
   const onSubmit = async (data: RegisterForm) => {
     try {
       setError("");
-      await apiPost("/api/auth/register", { name: data.name, email: data.email, password: data.password, role: data.role });
+      await apiPost("/api/auth/register", { 
+        firstName: data.firstName, 
+        lastName: data.lastName, 
+        maternalLastName: data.maternalLastName || null, 
+        email: data.email, 
+        password: data.password, 
+        role: data.role 
+      });
       router.push("/auth/login?registered=true");
     } catch (err: any) {
       setError(err.message || "Error al registrar");
@@ -51,11 +60,27 @@ export default function RegisterPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+            
             <div className="space-y-2">
-              <Label className="text-[#1A1A2E]">Nombre completo</Label>
-              <Input {...register("name")} placeholder="Juan Pérez" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
-              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+              <Label className="text-[#1A1A2E]">Nombres</Label>
+              <Input {...register("firstName")} placeholder="Juan" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[#1A1A2E]">Apellido Paterno</Label>
+                <Input {...register("lastName")} placeholder="Pérez" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+                {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[#1A1A2E]">Apellido Materno</Label>
+                <Input {...register("maternalLastName")} placeholder="Ramos" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+                {errors.maternalLastName && <p className="text-sm text-red-500">{errors.maternalLastName.message}</p>}
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label className="text-[#1A1A2E]">Email</Label>
               <Input {...register("email")} type="email" placeholder="tu@email.com" className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />

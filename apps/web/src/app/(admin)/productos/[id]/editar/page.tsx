@@ -26,7 +26,7 @@ const productSchema = z.object({
   imageUrl: z.string().url().optional().or(z.literal("")),
   variants: z.array(z.object({
     sizeId: z.string().min(1),
-    color: z.string().min(1),
+    colorId: z.string().min(1),
     stock: z.coerce.number().min(0),
     price: z.coerce.number().optional().or(z.literal("").transform(() => undefined)),
     discountPct: z.coerce.number().min(0).max(100).optional().or(z.literal("").transform(() => undefined))
@@ -54,7 +54,7 @@ export default function EditarProductoPage() {
       isBaseProduct: true,
       isActive: true,
       imageUrl: "",
-      variants: [{ sizeId: "", color: "", stock: 0 }]
+      variants: [{ sizeId: "", colorId: "", stock: 0 }]
     }
   });
 
@@ -74,11 +74,11 @@ export default function EditarProductoPage() {
       imageUrl: product.images?.[0]?.url || "",
       variants: product.variants?.map((v: any) => ({
         sizeId: v.sizeId,
-        color: v.color,
+        colorId: v.colorId,
         stock: v.stock,
         price: v.price ? Number(v.price) : undefined,
         discountPct: v.discountPct ? Number(v.discountPct) : undefined,
-      })) || [{ sizeId: "", color: "", stock: 0 }]
+      })) || [{ sizeId: "", colorId: "", stock: 0 }]
     });
   }, [product, form]);
 
@@ -93,7 +93,7 @@ export default function EditarProductoPage() {
   });
 
   if (isLoading) return <div className="p-8 text-center text-slate-500">Cargando producto...</div>;
-  const { categories, fabrics, sizes } = attributes || { categories: [], fabrics: [], sizes: [] };
+  const { categories, fabrics, sizes, colors } = attributes || { categories: [], fabrics: [], sizes: [], colors: [] };
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
@@ -116,11 +116,16 @@ export default function EditarProductoPage() {
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" {...form.register("isActive")} /> Activo</label>
         </CardContent></Card>
 
-        <Card className="border-none shadow-sm"><CardHeader className="flex flex-row items-center justify-between"><CardTitle>Variantes</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => append({ sizeId: "", color: "", stock: 0 })}><Plus className="h-4 w-4 mr-1" />Añadir</Button></CardHeader><CardContent className="space-y-3">
+        <Card className="border-none shadow-sm"><CardHeader className="flex flex-row items-center justify-between"><CardTitle>Variantes</CardTitle><Button type="button" variant="outline" size="sm" onClick={() => append({ sizeId: "", colorId: "", stock: 0 })}><Plus className="h-4 w-4 mr-1" />Añadir</Button></CardHeader><CardContent className="space-y-3">
           {fields.map((field, index) => (
             <div key={field.id} className="grid md:grid-cols-6 gap-2 items-end">
               <select {...form.register(`variants.${index}.sizeId`)} className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"><option value="">Talla</option>{sizes.map((s: any) => <option key={s.id} value={s.id}>{s.value}</option>)}</select>
-              <Input {...form.register(`variants.${index}.color`)} placeholder="Color" />
+              <select {...form.register(`variants.${index}.colorId`)} className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="">Color</option>
+                {colors.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
               <Input type="number" {...form.register(`variants.${index}.stock`)} placeholder="Stock" />
               <Input type="number" step="0.01" {...form.register(`variants.${index}.price`)} placeholder="Precio" />
               <Input type="number" step="0.01" {...form.register(`variants.${index}.discountPct`)} placeholder="Desc. %" />

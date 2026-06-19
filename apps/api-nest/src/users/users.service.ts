@@ -14,13 +14,12 @@ export class UsersService {
     if (!user) {
       throw new BadRequestException('Usuario no encontrado');
     }
-    const { id, email, firstName, lastName, role, whatsappNumber } = user;
-    const fullName = `${firstName} ${lastName || ''}`.trim();
-    return { id, email, name: fullName, role, whatsappNumber };
+    const { id, email, firstName, lastName, maternalLastName, role, whatsappNumber } = user;
+    return { id, email, firstName, lastName, maternalLastName, role, whatsappNumber };
   }
 
   async updateMyProfile(userId: string, data: UpdateProfileDto) {
-    if (!data.name && !data.email && !data.newPassword) {
+    if (!data.firstName && !data.lastName && !data.maternalLastName && !data.email && !data.newPassword) {
       throw new BadRequestException('No hay cambios para actualizar');
     }
 
@@ -32,12 +31,16 @@ export class UsersService {
       throw new BadRequestException('Usuario no encontrado');
     }
 
-    const updateData: { firstName?: string; lastName?: string; email?: string; passwordHash?: string } = {};
+    const updateData: { firstName?: string; lastName?: string; maternalLastName?: string | null; email?: string; passwordHash?: string } = {};
 
-    if (data.name) {
-      const parts = data.name.trim().split(/\s+/);
-      updateData.firstName = parts[0] || '';
-      updateData.lastName = parts.slice(1).join(' ') || '';
+    if (data.firstName !== undefined) {
+      updateData.firstName = data.firstName;
+    }
+    if (data.lastName !== undefined) {
+      updateData.lastName = data.lastName;
+    }
+    if (data.maternalLastName !== undefined) {
+      updateData.maternalLastName = data.maternalLastName || null;
     }
 
     if (data.email && data.email !== currentUser.email) {
@@ -68,8 +71,7 @@ export class UsersService {
       data: updateData,
     });
 
-    const { id, email, firstName, lastName, role, whatsappNumber } = updated;
-    const fullName = `${firstName} ${lastName || ''}`.trim();
-    return { message: 'Perfil actualizado', user: { id, email, name: fullName, role, whatsappNumber } };
+    const { id, email, firstName, lastName, maternalLastName, role, whatsappNumber } = updated;
+    return { message: 'Perfil actualizado', user: { id, email, firstName, lastName, maternalLastName, role, whatsappNumber } };
   }
 }

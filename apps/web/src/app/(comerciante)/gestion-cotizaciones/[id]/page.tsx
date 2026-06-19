@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/lib/api";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiGet, apiPatch } from "@/lib/api";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { 
   Search, 
   Download, 
@@ -41,10 +42,13 @@ const getActiveStep = (status: string): number => {
     case "PENDING":
       return 1;
     case "QUOTED":
+    case "IN_REVIEW":
       return 2;
     case "APPROVED":
     case "REJECTED":
     case "UNFEASIBLE":
+    case "CANCELLED":
+    case "WAITING_PAYMENT":
       return 3;
     default:
       return 0;
@@ -65,6 +69,8 @@ export default function DetalleCotizacion() {
   
   const [activeModal, setActiveModal] = useState<"RECHAZAR" | "ACEPTAR" | "WHATSAPP" | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [proposalPrice, setProposalPrice] = useState("");
+  const [proposalMessage, setProposalMessage] = useState("");
 
   const { data: quote, isLoading } = useQuery<any>({
     queryKey: ["quote-detail", id],
@@ -75,6 +81,32 @@ export default function DetalleCotizacion() {
       return allQuotes.find((q: any) => String(q.id).trim() === String(id).trim()) || null;
     },
     enabled: !!id 
+  });
+
+  const respondQuote = useMutation({
+    mutationFn: (data: { quotedPrice: number; merchantMessage?: string }) => 
+      apiPatch(`/api/merchant/quotes/${id}/respond`, data),
+    onSuccess: () => {
+      toast.success("Propuesta enviada correctamente");
+      setActiveModal(null);
+      router.push("/gestion-cotizaciones");
+    },
+    onError: (err: any) => {
+      toast.error("Error al enviar propuesta", { description: err.message });
+    }
+  });
+
+  const markUnfeasible = useMutation({
+    mutationFn: (data: { unfeasibleReason: string }) => 
+      apiPatch(`/api/merchant/quotes/${id}/unfeasible`, data),
+    onSuccess: () => {
+      toast.success("Cotización marcada como inviable");
+      setActiveModal(null);
+      router.push("/gestion-cotizaciones");
+    },
+    onError: (err: any) => {
+      toast.error("Error al rechazar cotización", { description: err.message });
+    }
   });
 
   const mockMatrix = [
@@ -99,7 +131,6 @@ export default function DetalleCotizacion() {
     brazo_izq: "/prenda-base3.jpg",
     brazo_der: "/prenda-base4.jpg"
   };
-
 
   if (isLoading) return <div className="p-8 text-center text-slate-500 flex h-64 items-center justify-center">Cargando detalles...</div>;
   if (!quote) return <div className="p-8 text-center text-red-500 flex flex-col h-64 items-center justify-center gap-2">
@@ -143,21 +174,43 @@ export default function DetalleCotizacion() {
     }
   };
 
-  const garmentType = quote.garmentType || "Polo Cuello Camisero";
+  const firstItem = quote.items?.[0];
+  const garmentType = firstItem?.productVariant?.product?.name || quote.garmentType || "Polo Cuello Camisero";
+  const fabricType = firstItem?.productVariant?.product?.fabric?.value || quote.fabricType || "Piqué";
+
   const baseProduct = mockBaseProducts[garmentType] || {
     id: "polo-camisero-id",
     name: garmentType,
-    basePrice: quote.quotedPrice ? Number(quote.quotedPrice) * 0.7 : 35.00,
+    basePrice: quote.estimatedPrice || quote.quotedPrice ? Number(quote.estimatedPrice || quote.quotedPrice) * 0.7 : 35.00,
     category: "Prendas",
-    fabric: quote.fabricType || "Textil",
+    fabric: fabricType || "Textil",
     image: "/prenda-base.png"
   };
 
-  const clientName = quote.client?.name || "Cliente General";
+  const clientName = quote.client 
+    ? (quote.client.name || `${quote.client.firstName || ""} ${quote.client.lastName || ""}`.trim())
+    : "Cliente General";
   const initials = clientName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
   const rawPhone = quote.client?.whatsappNumber || "999999999";
   const cleanPhone = rawPhone.replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/51${cleanPhone}?text=${encodeURIComponent(`Hola ${clientName}, me contacto por la cotización #${id?.slice(0, 6).toUpperCase()} en CoreMen.`)}`;
+  const quotedPrice = quote.estimatedPrice || quote.quotedPrice || 0;
+
+  const handleRejectSubmit = () => {
+    if (!rejectReason.trim()) return;
+    markUnfeasible.mutate({ unfeasibleReason: rejectReason });
+  };
+
+  const handleAcceptSubmit = () => {
+    if (!proposalPrice || isNaN(Number(proposalPrice))) {
+      toast.error("Por favor ingresa un precio válido");
+      return;
+    }
+    respondQuote.mutate({
+      quotedPrice: Number(proposalPrice),
+      merchantMessage: proposalMessage || undefined,
+    });
+  };
 
   return (
     // Contenedor principal ajustado para que el footer "sticky" funcione perfectamente
@@ -220,10 +273,10 @@ export default function DetalleCotizacion() {
                   secondaryTextColor = "text-slate-500";
                 } else if (isActive) {
                   secondaryTextColor = "text-[#A0522D] font-semibold";
-                  if (quote?.status === "APPROVED") {
+                  if (quote?.status === "APPROVED" || quote?.status === "WAITING_PAYMENT") {
                     secondaryText = "Aprobado";
                     secondaryTextColor = "text-emerald-600 font-semibold";
-                  } else if (quote?.status === "REJECTED") {
+                  } else if (quote?.status === "REJECTED" || quote?.status === "CANCELLED") {
                     secondaryText = "Rechazado";
                     secondaryTextColor = "text-red-600 font-semibold";
                   } else if (quote?.status === "UNFEASIBLE") {
@@ -437,7 +490,7 @@ export default function DetalleCotizacion() {
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span className="text-3xl font-bold text-white whitespace-nowrap">
-                        S/ {quote.quotedPrice ? Number(quote.quotedPrice).toFixed(2) : "0.00"}
+                        S/ {quotedPrice ? Number(quotedPrice).toFixed(2) : "0.00"}
                       </span>
                     </div>
                   </div>
@@ -569,16 +622,71 @@ export default function DetalleCotizacion() {
       {/* MODALES */}
       <Dialog open={activeModal === "RECHAZAR"} onOpenChange={(open) => !open && setActiveModal(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle className="text-red-600 flex items-center gap-2"><XCircle className="w-5 h-5" /> Rechazar Cotización</DialogTitle><DialogDescription>Indica el motivo de rechazo.</DialogDescription></DialogHeader>
-          <div className="py-4"><Textarea placeholder="Motivo..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={4} /></div>
-          <DialogFooter><Button variant="outline" onClick={() => setActiveModal(null)}>Cancelar</Button><Button variant="destructive" disabled={!rejectReason}>Confirmar</Button></DialogFooter>
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <XCircle className="w-5 h-5" /> Rechazar Cotización
+            </DialogTitle>
+            <DialogDescription>Indica el motivo de rechazo.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea 
+              placeholder="Motivo..." 
+              value={rejectReason} 
+              onChange={(e) => setRejectReason(e.target.value)} 
+              rows={4} 
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActiveModal(null)}>Cancelar</Button>
+            <Button 
+              variant="destructive" 
+              disabled={!rejectReason || markUnfeasible.isPending} 
+              onClick={handleRejectSubmit}
+            >
+              {markUnfeasible.isPending ? "Rechazando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={activeModal === "ACEPTAR"} onOpenChange={(open) => !open && setActiveModal(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="text-green-600 flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Aceptar Cotización</DialogTitle><DialogDescription>Aprobarás esta cotización.</DialogDescription></DialogHeader>
-          <DialogFooter className="mt-6"><Button variant="outline" onClick={() => setActiveModal(null)}>Cancelar</Button><Button className="bg-[#10B981] hover:bg-[#059669] text-white">Aprobar</Button></DialogFooter>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-green-600 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" /> Aceptar Cotización
+            </DialogTitle>
+            <DialogDescription>Aprobarás esta cotización e indicarás el precio propuesto para este lote.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-500">Precio Propuesto de Lote (S/)</label>
+              <Input 
+                type="number" 
+                placeholder="Ej. 1250" 
+                value={proposalPrice} 
+                onChange={(e) => setProposalPrice(e.target.value)} 
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-500">Mensaje Comercial (Opcional)</label>
+              <Textarea 
+                placeholder="Ej. Precio con descuento..." 
+                value={proposalMessage} 
+                onChange={(e) => setProposalMessage(e.target.value)} 
+                rows={3} 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setActiveModal(null)}>Cancelar</Button>
+            <Button 
+              className="bg-[#10B981] hover:bg-[#059669] text-white" 
+              onClick={handleAcceptSubmit}
+              disabled={!proposalPrice || respondQuote.isPending}
+            >
+              {respondQuote.isPending ? "Aprobando..." : "Aprobar"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

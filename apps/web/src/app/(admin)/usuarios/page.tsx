@@ -91,7 +91,9 @@ export default function UsuariosPage() {
   // States
   const [userOpen, setUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [userName, setUserName] = useState("");
+  const [userFirstName, setUserFirstName] = useState("");
+  const [userLastName, setUserLastName] = useState("");
+  const [userMaternalLastName, setUserMaternalLastName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userPassword, setUserPassword] = useState("");
   const [userRole, setUserRole] = useState("CLIENT");
@@ -101,14 +103,18 @@ export default function UsuariosPage() {
   const handleOpenUser = (user: any = null) => {
     if (user) {
       setEditingUser(user);
-      setUserName(user.name || "");
+      setUserFirstName(user.firstName || "");
+      setUserLastName(user.lastName || "");
+      setUserMaternalLastName(user.maternalLastName || "");
       setUserEmail(user.email || "");
       setUserPassword(""); // Don't show hashed password
       setUserRole(user.role || "CLIENT");
       setUserActive(user.isActive);
     } else {
       setEditingUser(null);
-      setUserName("");
+      setUserFirstName("");
+      setUserLastName("");
+      setUserMaternalLastName("");
       setUserEmail("");
       setUserPassword("");
       setUserRole("CLIENT");
@@ -120,7 +126,9 @@ export default function UsuariosPage() {
   const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
     const data: any = {
-      name: userName,
+      firstName: userFirstName,
+      lastName: userLastName,
+      maternalLastName: userMaternalLastName || null,
       email: userEmail,
       role: userRole,
       isActive: userActive,
@@ -139,7 +147,9 @@ export default function UsuariosPage() {
   // Filter users by search term
   const filteredUsers = users?.filter(
     (u: any) =>
-      u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.maternalLastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.role?.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
@@ -208,14 +218,15 @@ export default function UsuariosPage() {
                       return <Badge variant="outline" className="bg-white text-slate-600 font-semibold border-slate-200">CLIENT</Badge>;
                     };
 
+                    const fullName = `${u.firstName || ""} ${u.lastName || ""} ${u.maternalLastName || ""}`.trim();
                     return (
                       <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4 font-semibold text-slate-900">
                           <div className="flex items-center gap-2">
                             <div className="w-7 h-7 bg-slate-100 text-slate-600 rounded-full flex items-center justify-center font-bold text-xs shrink-0">
-                              {u.name ? u.name[0].toUpperCase() : "?"}
+                              {u.firstName ? u.firstName[0].toUpperCase() : "?"}
                             </div>
-                            <span className="truncate max-w-[150px]" title={u.name}>{u.name}</span>
+                            <span className="truncate max-w-[180px]" title={fullName}>{fullName}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-500 font-medium">{u.email}</td>
@@ -274,15 +285,40 @@ export default function UsuariosPage() {
           </DialogHeader>
           <form onSubmit={handleSaveUser} className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="userName" className="font-semibold text-slate-700">Nombre Completo</Label>
+              <Label htmlFor="userFirstName" className="font-semibold text-slate-700">Nombres</Label>
               <Input 
-                id="userName" 
-                value={userName} 
-                onChange={(e) => setUserName(e.target.value)} 
-                placeholder="Ej. Juan Pérez" 
+                id="userFirstName" 
+                value={userFirstName} 
+                onChange={(e) => setUserFirstName(e.target.value)} 
+                placeholder="Ej. Juan" 
                 required 
                 className="rounded-xl border-slate-200"
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="userLastName" className="font-semibold text-slate-700">Ap. Paterno</Label>
+                <Input 
+                  id="userLastName" 
+                  value={userLastName} 
+                  onChange={(e) => setUserLastName(e.target.value)} 
+                  placeholder="Pérez" 
+                  required 
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="userMaternalLastName" className="font-semibold text-slate-700">Ap. Materno</Label>
+                <Input 
+                  id="userMaternalLastName" 
+                  value={userMaternalLastName} 
+                  onChange={(e) => setUserMaternalLastName(e.target.value)} 
+                  placeholder="Ramos" 
+                  className="rounded-xl border-slate-200"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">

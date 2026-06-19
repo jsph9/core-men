@@ -4,7 +4,16 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   @MinLength(2, { message: 'El nombre debe tener al menos 2 caracteres' })
-  name?: string;
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2, { message: 'El apellido paterno debe tener al menos 2 caracteres' })
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  maternalLastName?: string;
 
   @IsOptional()
   @IsEmail({}, { message: 'El correo electrónico no es válido' })

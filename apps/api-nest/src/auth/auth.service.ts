@@ -32,20 +32,11 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(data.password, 12);
     const role = data.role === Role.MERCHANT ? Role.MERCHANT : Role.CLIENT;
 
-    let firstName = data.firstName || '';
-    let lastName = data.lastName || '';
-    
-    if (!firstName && data.name) {
-      const parts = data.name.trim().split(/\s+/);
-      firstName = parts[0] || '';
-      lastName = parts.slice(1).join(' ') || '';
-    }
-
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
-        firstName,
-        lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         maternalLastName: data.maternalLastName || null,
         passwordHash,
         role,
@@ -53,8 +44,14 @@ export class AuthService {
     });
 
     // TODO: Emit event for Welcome Email
-    const fullName = `${user.firstName} ${user.lastName || ''}`.trim();
-    return { id: user.id, email: user.email, name: fullName, role: user.role };
+    return { 
+      id: user.id, 
+      email: user.email, 
+      firstName: user.firstName, 
+      lastName: user.lastName, 
+      maternalLastName: user.maternalLastName, 
+      role: user.role 
+    };
   }
 
   async login(data: LoginDto) {
@@ -164,9 +161,8 @@ export class AuthService {
       throw new UnauthorizedException('Usuario no encontrado');
     }
 
-    const { id, email, firstName, lastName, role, whatsappNumber } = user;
-    const fullName = `${firstName} ${lastName || ''}`.trim();
-    return { id, email, name: fullName, role, whatsappNumber };
+    const { id, email, firstName, lastName, maternalLastName, role, whatsappNumber } = user;
+    return { id, email, firstName, lastName, maternalLastName, role, whatsappNumber };
   }
 }
 

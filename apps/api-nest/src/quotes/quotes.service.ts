@@ -8,7 +8,7 @@ export class QuotesService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getClientQuotes(clientId: string) {
-    const quotes = await this.prisma.quote.findMany({
+    return this.prisma.quote.findMany({
       where: { clientId },
       include: {
         items: {
@@ -18,72 +18,56 @@ export class QuotesService {
                 product: {
                   include: {
                     fabric: true,
+                    category: true,
                   },
                 },
                 color: true,
+                size: true,
               },
             },
+          },
+        },
+        designs: {
+          include: {
+            technique: true,
           },
         },
         statusHistory: { orderBy: { createdAt: 'desc' } },
       },
       orderBy: { createdAt: 'desc' },
     });
-
-    return quotes.map((q) => {
-      const firstItem = q.items[0];
-      const garmentType = firstItem?.productVariant?.product?.name || 'Prenda';
-      const fabricType = firstItem?.productVariant?.product?.fabric?.value || 'Estándar';
-      const colorName = firstItem?.productVariant?.color?.name || 'Varios';
-
-      return {
-        ...q,
-        garmentType,
-        fabricType,
-        color: colorName,
-        items: q.items.map((item) => ({
-          ...item,
-          productVariant: {
-            ...item.productVariant,
-            color: item.productVariant?.color?.name || '',
-          },
-        })),
-      };
-    });
   }
 
   async createQuote(clientId: string, data: CreateQuoteDto) {
-    const { items, message, totalQuantity, garmentType, fabricType, color, designImageUrl, designZone, designX, designY, designScaleX, designScaleY, designRotation } = data;
-
-    // Encontrar una técnica por defecto si es que existe en la BD
-    const firstTechnique = await this.prisma.technique.findFirst();
-    const techniqueId = firstTechnique ? firstTechnique.id : 'default-technique-id';
-
-    // Mapear diseño si se envió una imagen de diseño
-    const designsData = designImageUrl ? {
-      create: [{
-        placement: (designZone?.toUpperCase() === 'BACK' ? 'BACK' : (designZone?.toUpperCase() === 'RIGHTSLEEVE' ? 'RIGHTSLEEVE' : (designZone?.toUpperCase() === 'LEFTSLEEVE' ? 'LEFTSLEEVE' : 'FRONT'))) as any,
-        techniqueId,
-        baseGarmentUrl: '/prenda-base.png',
-        logoUrl: designImageUrl,
-        positionX: designX || 0,
-        positionY: designY || 0,
-        width: designScaleX || 100,
-        height: designScaleY || 100,
-        rotation: designRotation || 0,
-        canvasWidth: 500,
-        canvasHeight: 500,
-      }]
-    } : undefined;
+    const { items, message, totalQuantity, designs } = data;
 
     const created = await this.prisma.quote.create({
       data: {
         clientId,
-        totalQuantity: totalQuantity || 1,
+        totalQuantity,
         message: message || null,
         status: QuoteMacroStatus.PENDING,
-        items: items ? { create: items } : undefined,
-        designs: designsData,
+        items: {
+          create: items.map(item => ({
+            productVariantId: item.productVariantId,
+            quantity: item.quantity,
+          })),
+        },
+        designs: designs && designs.length > 0 ? {
+          create: designs.map(d => ({
+            placement: d.placement,
+            techniqueId: d.techniqueId,
+            baseGarmentUrl: d.baseGarmentUrl,
+            logoUrl: d.logoUrl,
+            positionX: d.positionX,
+            positionY: d.positionY,
+            width: d.width,
+            height: d.height,
+            rotation: d.rotation,
+            canvasWidth: d.canvasWidth,
+            canvasHeight: d.canvasHeight,
+          })),
+        } : undefined,
         statusHistory: {
           create: {
             changedField: 'STATUS',
@@ -101,10 +85,21 @@ export class QuotesService {
 
   async getMerchantQuotes(status?: QuoteMacroStatus) {
     const where = status ? { status } : {};
-    const quotes = await this.prisma.quote.findMany({
+    return this.prisma.quote.findMany({
       where,
       include: {
-        client: { select: { id: true, firstName: true, lastName: true, email: true } },
+        client: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            maternalLastName: true,
+            email: true,
+            whatsappNumber: true,
+            businessName: true,
+            ruc: true,
+          },
+        },
         items: {
           include: {
             productVariant: {
@@ -112,44 +107,22 @@ export class QuotesService {
                 product: {
                   include: {
                     fabric: true,
+                    category: true,
                   },
                 },
                 color: true,
+                size: true,
               },
             },
           },
         },
+        designs: {
+          include: {
+            technique: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
-    });
-
-    return quotes.map(q => {
-      const { client, items, ...rest } = q;
-      const name = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || 'Cliente General';
-      
-      const firstItem = items[0];
-      const garmentType = firstItem?.productVariant?.product?.name || 'Prenda';
-      const fabricType = firstItem?.productVariant?.product?.fabric?.value || 'Estándar';
-      const colorName = firstItem?.productVariant?.color?.name || 'Varios';
-
-      return {
-        ...rest,
-        client: {
-          id: client?.id || '',
-          name,
-          email: client?.email || '',
-        },
-        garmentType,
-        fabricType,
-        color: colorName,
-        items: items.map((item) => ({
-          ...item,
-          productVariant: {
-            ...item.productVariant,
-            color: item.productVariant?.color?.name || '',
-          },
-        })),
-      };
     });
   }
 
@@ -157,7 +130,18 @@ export class QuotesService {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
       include: {
-        client: { select: { id: true, firstName: true, lastName: true, email: true } },
+        client: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            maternalLastName: true,
+            email: true,
+            whatsappNumber: true,
+            businessName: true,
+            ruc: true,
+          },
+        },
         items: {
           include: {
             productVariant: {
@@ -165,45 +149,27 @@ export class QuotesService {
                 product: {
                   include: {
                     fabric: true,
+                    category: true,
                   },
                 },
                 color: true,
+                size: true,
               },
             },
           },
         },
+        designs: {
+          include: {
+            technique: true,
+          },
+        },
         statusHistory: { orderBy: { createdAt: 'desc' } },
+        payments: { orderBy: { paidAt: 'desc' } },
       },
     });
 
     if (!quote) throw new NotFoundException('Cotización no encontrada');
-    
-    const { client, items, ...rest } = quote;
-    const name = `${client?.firstName || ''} ${client?.lastName || ''}`.trim() || 'Cliente General';
-
-    const firstItem = items[0];
-    const garmentType = firstItem?.productVariant?.product?.name || 'Prenda';
-    const fabricType = firstItem?.productVariant?.product?.fabric?.value || 'Estándar';
-    const colorName = firstItem?.productVariant?.color?.name || 'Varios';
-
-    return {
-      ...rest,
-      client: {
-        id: client?.id || '',
-        name,
-        email: client?.email || '',
-      },
-      garmentType,
-      fabricType,
-      color: colorName,
-      items: items.map((item) => ({
-        ...item,
-        productVariant: {
-          ...item.productVariant,
-          color: item.productVariant?.color?.name || '',
-        },
-      })),
-    };
+    return quote;
   }
 
   async respondToQuote(merchantId: string, id: string, data: RespondQuoteDto) {
@@ -212,7 +178,7 @@ export class QuotesService {
       throw new BadRequestException('Cotización no válida para ser respondida');
     }
 
-    return this.prisma.quote.update({
+    await this.prisma.quote.update({
       where: { id },
       data: {
         status: QuoteMacroStatus.IN_REVIEW,
@@ -229,6 +195,8 @@ export class QuotesService {
         },
       },
     });
+
+    return this.getMerchantQuoteById(id);
   }
 
   async approveQuote(clientId: string, id: string) {
@@ -237,7 +205,7 @@ export class QuotesService {
       throw new BadRequestException('Operación inválida');
     }
 
-    return this.prisma.quote.update({
+    await this.prisma.quote.update({
       where: { id },
       data: {
         status: QuoteMacroStatus.WAITING_PAYMENT,
@@ -253,6 +221,8 @@ export class QuotesService {
         },
       },
     });
+
+    return this.getMerchantQuoteById(id);
   }
 
   async markUnfeasible(merchantId: string, id: string, data: MarkUnfeasibleDto) {
@@ -266,7 +236,7 @@ export class QuotesService {
       `Hola, me contacto por la cotización #${id} en CoreMen. ¿Podemos explorar alternativas?`
     )}`;
 
-    return this.prisma.quote.update({
+    await this.prisma.quote.update({
       where: { id },
       data: {
         status: QuoteMacroStatus.CANCELLED,
@@ -284,6 +254,7 @@ export class QuotesService {
         },
       },
     });
+
+    return this.getMerchantQuoteById(id);
   }
 }
-

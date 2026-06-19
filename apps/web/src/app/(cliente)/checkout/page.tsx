@@ -225,7 +225,7 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex-1 pt-1">
                       <h3 className="font-semibold text-slate-900 text-sm leading-tight">{product?.name}</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">{item.productVariant?.color} / {item.productVariant?.size?.value}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{item.productVariant?.color?.name} / {item.productVariant?.size?.value}</p>
                     </div>
                     <div className="text-right pt-1">
                       <p className="font-semibold text-slate-900 text-sm">{formatCurrency(Number(item.subtotal))}</p>

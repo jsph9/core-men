@@ -78,13 +78,7 @@ export class ProductsService {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    return {
-      ...product,
-      variants: product.variants.map((v) => ({
-        ...v,
-        color: v.color?.name || '',
-      })),
-    };
+    return product;
   }
 }
 

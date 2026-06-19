@@ -57,7 +57,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
     }
 
     // Find the variant ID
-    const variant = product?.variants?.find((v: any) => v.color === selectedColor && v.size?.value === selectedSize);
+    const variant = product?.variants?.find((v: any) => v.color?.name === selectedColor && v.size?.value === selectedSize);
     
     if (!variant) {
       toast.error("Variante no disponible", { description: "Esta combinación de talla y color está agotada." });
@@ -92,8 +92,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   }
 
   // Extract unique colors and sizes from variants
-  const colors = Array.from(new Set(product.variants?.map((v: any) => v.color))) as string[];
-  const sizes = Array.from(new Set(product.variants?.map((v: any) => v.size?.value))) as string[];
+  const colors = Array.from(new Map(product.variants?.map((v: any) => [v.color?.id, v.color])).values()).filter(Boolean) as any[];
+  const sizes = Array.from(new Set(product.variants?.map((v: any) => v.size?.value))).filter(Boolean) as string[];
 
   // Calculate dynamic price based on quantity (Mockup logic for visual feedback)
   const basePrice = Number(product.basePrice);
@@ -191,17 +191,21 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                 <span className="text-sm text-slate-500">{selectedColor || "Selecciona uno"}</span>
               </div>
               <div className="flex flex-wrap gap-3">
-                {colors.map(color => (
+                {colors.map((color: any) => (
                   <button 
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`h-12 px-5 rounded-full border text-sm font-medium transition-all ${
-                      selectedColor === color 
+                    key={color.id}
+                    onClick={() => setSelectedColor(color.name)}
+                    className={`h-12 px-5 rounded-full border text-sm font-medium transition-all flex items-center gap-2 ${
+                      selectedColor === color.name 
                         ? 'border-slate-900 bg-slate-900 text-white shadow-md' 
                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
                     }`}
                   >
-                    {color}
+                    <span 
+                      className="w-4 h-4 rounded-full border border-slate-300"
+                      style={{ backgroundColor: color.hexCode }}
+                    />
+                    {color.name}
                   </button>
                 ))}
               </div>

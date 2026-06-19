@@ -10,7 +10,7 @@ export class ProductVariantDto {
   sizeId: string;
 
   @IsString()
-  color: string;
+  colorId: string;
 
   @IsNumber()
   stock: number;

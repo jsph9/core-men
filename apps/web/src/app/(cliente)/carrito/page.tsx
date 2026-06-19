@@ -136,7 +136,7 @@ export default function CarritoPage() {
                             </Link>
                             <p className="text-sm text-slate-500 mt-1">
                               Talla: <span className="font-medium text-slate-700">{variant?.size?.value}</span> | 
-                              Color: <span className="font-medium text-slate-700">{variant?.color}</span>
+                              Color: <span className="font-medium text-slate-700">{variant?.color?.name}</span>
                             </p>
                           </div>
                           

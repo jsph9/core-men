@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { apiGet, apiPut } from "@/lib/api";
 
 const schema = z.object({
-  name: z.string().min(2, "Nombre muy corto"),
+  firstName: z.string().min(2, "Nombre muy corto"),
+  lastName: z.string().min(2, "Apellido paterno muy corto"),
+  maternalLastName: z.string().optional(),
   email: z.string().email("Email inválido"),
   currentPassword: z.string().optional(),
   newPassword: z.string().optional(),
@@ -35,7 +37,14 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (me) {
-      reset({ name: me.name, email: me.email, currentPassword: "", newPassword: "" });
+      reset({ 
+        firstName: me.firstName || "", 
+        lastName: me.lastName || "", 
+        maternalLastName: me.maternalLastName || "", 
+        email: me.email, 
+        currentPassword: "", 
+        newPassword: "" 
+      });
     }
   }, [me, reset]);
 
@@ -43,7 +52,12 @@ export default function PerfilPage() {
     try {
       setServerError("");
       setServerMessage("");
-      const payload: Record<string, string> = { name: values.name, email: values.email };
+      const payload: Record<string, string> = { 
+        firstName: values.firstName, 
+        lastName: values.lastName, 
+        maternalLastName: values.maternalLastName || "", 
+        email: values.email 
+      };
 
       if (values.newPassword) {
         payload.currentPassword = values.currentPassword || "";
@@ -68,9 +82,22 @@ export default function PerfilPage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[#1A1A2E]">Nombre</Label>
-              <Input {...register("name")} className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
-              {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
+              <Label className="text-[#1A1A2E]">Nombres</Label>
+              <Input {...register("firstName")} className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName.message}</p>}
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-[#1A1A2E]">Apellido Paterno</Label>
+                <Input {...register("lastName")} className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+                {errors.lastName && <p className="text-sm text-red-500">{errors.lastName.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[#1A1A2E]">Apellido Materno</Label>
+                <Input {...register("maternalLastName")} className="rounded-md border-gray-300 focus:ring-2 focus:ring-blue-500/20" />
+                {errors.maternalLastName && <p className="text-sm text-red-500">{errors.maternalLastName.message}</p>}
+              </div>
             </div>
 
             <div className="space-y-2">
