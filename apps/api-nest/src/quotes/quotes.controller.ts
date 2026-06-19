@@ -3,7 +3,7 @@ import { QuotesService } from './quotes.service';
 import { CreateQuoteDto, RespondQuoteDto, MarkUnfeasibleDto } from './dto/quotes.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role, QuoteStatus } from '@prisma/client';
+import { Role } from '@prisma/client';
 
 @Controller('quotes')
 @UseGuards(RolesGuard)

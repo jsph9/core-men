@@ -82,8 +82,11 @@ export class AdminController {
 
   @Post('sizes')
   @Roles(Role.ADMIN)
-  async createSize(@Req() req: any, @Body('value') value: string) {
-    return this.adminService.createSize(value, req.user.userId, req.ip);
+  async createSize(
+    @Req() req: any,
+    @Body() body: { value: string; abbreviation?: string },
+  ) {
+    return this.adminService.createSize(body.value, req.user.userId, req.ip, body.abbreviation);
   }
 
   @Patch('sizes/:id')
@@ -91,9 +94,9 @@ export class AdminController {
   async updateSize(
     @Req() req: any,
     @Param('id') id: string,
-    @Body() body: { value?: string; isActive?: boolean },
+    @Body() body: { value?: string; abbreviation?: string; isActive?: boolean },
   ) {
-    return this.adminService.updateSize(id, body.value, body.isActive, req.user.userId, req.ip);
+    return this.adminService.updateSize(id, body.value, body.abbreviation, body.isActive, req.user.userId, req.ip);
   }
 
   @Delete('sizes/:id')

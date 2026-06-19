@@ -2,13 +2,37 @@
 CREATE TYPE "Role" AS ENUM ('CLIENT', 'MERCHANT', 'ADMIN');
 
 -- CreateEnum
+CREATE TYPE "ClientType" AS ENUM ('NATURAL', 'LEGAL');
+
+-- CreateEnum
 CREATE TYPE "SeasonStatus" AS ENUM ('SCHEDULED', 'ACTIVE', 'EXPIRED', 'DEACTIVATED');
 
 -- CreateEnum
-CREATE TYPE "OrderStatus" AS ENUM ('REGISTERED', 'IN_PRODUCTION', 'READY_FOR_PICKUP', 'DELIVERED', 'CANCELLED');
+CREATE TYPE "OrderStatus" AS ENUM ('REGISTERED', 'IN_PREPARATION', 'READY_FOR_PICKUP', 'DELIVERED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "QuoteStatus" AS ENUM ('PENDING', 'QUOTED', 'APPROVED', 'REJECTED', 'UNFEASIBLE');
+CREATE TYPE "ReceiptType" AS ENUM ('BOLETA', 'FACTURA');
+
+-- CreateEnum
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'CONFIRMED', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('CARD', 'YAPE', 'TRANSFER');
+
+-- CreateEnum
+CREATE TYPE "QuoteMacroStatus" AS ENUM ('PENDING', 'IN_REVIEW', 'WAITING_PAYMENT', 'IN_PRODUCTION', 'READY_FOR_PICKUP', 'DELIVERED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "ViabilityStatus" AS ENUM ('PENDING', 'VIABLE', 'NONVIABLE');
+
+-- CreateEnum
+CREATE TYPE "FormalizationStatus" AS ENUM ('PENDING', 'IN_NEGOTIATION', 'UPDATED', 'CONFIRMED', 'REJECTED', 'EXPIRED');
+
+-- CreateEnum
+CREATE TYPE "PaymentQuoteStatus" AS ENUM ('PENDING', 'FULL_PAYMENT', 'PARTIAL_PAYMENT', 'FAILED');
+
+-- CreateEnum
+CREATE TYPE "DesignPlacement" AS ENUM ('FRONT', 'BACK', 'RIGHTSLEEVE', 'LEFTSLEEVE');
 
 -- CreateEnum
 CREATE TYPE "AuditEventType" AS ENUM ('PRICE_CHANGE', 'USER_MGMT', 'ROLE_CHANGE', 'DISCOUNT_CONFIG', 'ORDER_CANCEL', 'SENSITIVE_ACCESS', 'STOCK_ADJUST');
@@ -16,19 +40,30 @@ CREATE TYPE "AuditEventType" AS ENUM ('PRICE_CHANGE', 'USER_MGMT', 'ROLE_CHANGE'
 -- CreateEnum
 CREATE TYPE "ErrorSeverity" AS ENUM ('CRITICAL', 'HIGH', 'MEDIUM');
 
+-- CreateEnum
+CREATE TYPE "ErrorLogType" AS ENUM ('UNHANDLED_EXCEPTION', 'API_FAILURE', 'TIMEOUT', 'DB_ERROR');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
+    "maternalLastName" TEXT,
     "email" TEXT NOT NULL,
     "passwordHash" TEXT NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'CLIENT',
+    "clientType" "ClientType" NOT NULL DEFAULT 'NATURAL',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "failedLoginAttempts" INTEGER NOT NULL DEFAULT 0,
     "lockedUntil" TIMESTAMP(3),
     "whatsappNumber" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "termsAccepted" BOOLEAN NOT NULL DEFAULT true,
+    "termsAcceptedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "businessName" TEXT,
+    "ruc" TEXT,
+    "dni" TEXT,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -54,9 +89,33 @@ CREATE TABLE "Category" (
 );
 
 -- CreateTable
+CREATE TABLE "Color" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "hexCode" TEXT NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "Color_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Technique" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "ruleType" TEXT,
+    "minValue" DECIMAL(10,2),
+    "maxValue" DECIMAL(10,2),
+
+    CONSTRAINT "Technique_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "SizeAttribute" (
     "id" TEXT NOT NULL,
     "value" TEXT NOT NULL,
+    "abbreviation" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "SizeAttribute_pkey" PRIMARY KEY ("id")
@@ -66,6 +125,7 @@ CREATE TABLE "SizeAttribute" (
 CREATE TABLE "FabricAttribute" (
     "id" TEXT NOT NULL,
     "value" TEXT NOT NULL,
+    "price" DECIMAL(12,4) NOT NULL DEFAULT 0,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "FabricAttribute_pkey" PRIMARY KEY ("id")
@@ -77,8 +137,10 @@ CREATE TABLE "Product" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "basePrice" DECIMAL(12,4) NOT NULL,
-    "fiberComposition" TEXT,
-    "careInstructions" TEXT,
+    "sizeGuideText" TEXT,
+    "isBaseProduct" BOOLEAN NOT NULL DEFAULT true,
+    "fiberComposition" TEXT NOT NULL,
+    "careInstructions" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "categoryId" TEXT NOT NULL,
     "fabricId" TEXT NOT NULL,
@@ -93,9 +155,10 @@ CREATE TABLE "ProductVariant" (
     "id" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
     "sizeId" TEXT NOT NULL,
-    "color" TEXT NOT NULL,
+    "colorId" TEXT NOT NULL,
     "stock" INTEGER NOT NULL DEFAULT 0,
     "price" DECIMAL(12,4),
+    "discountPct" DECIMAL(7,4),
     "isActive" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "ProductVariant_pkey" PRIMARY KEY ("id")
@@ -121,6 +184,15 @@ CREATE TABLE "SizeGuide" (
     "sleeveCm" DOUBLE PRECISION NOT NULL,
 
     CONSTRAINT "SizeGuide_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ProductToTechnique" (
+    "productId" TEXT NOT NULL,
+    "techniqueId" TEXT NOT NULL,
+    "specificPrice" DECIMAL(12,4),
+
+    CONSTRAINT "ProductToTechnique_pkey" PRIMARY KEY ("productId","techniqueId")
 );
 
 -- CreateTable
@@ -175,7 +247,7 @@ CREATE TABLE "Order" (
     "status" "OrderStatus" NOT NULL DEFAULT 'REGISTERED',
     "totalAmount" DECIMAL(12,2) NOT NULL,
     "receiptUrl" TEXT,
-    "receiptType" TEXT,
+    "receiptType" "ReceiptType",
     "cancelReason" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -216,8 +288,8 @@ CREATE TABLE "Payment" (
     "stripePaymentId" TEXT NOT NULL,
     "amount" DECIMAL(12,2) NOT NULL,
     "currency" TEXT NOT NULL DEFAULT 'PEN',
-    "status" TEXT NOT NULL,
-    "method" TEXT NOT NULL,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
+    "method" "PaymentMethod",
     "paidAt" TIMESTAMP(3),
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
@@ -227,28 +299,59 @@ CREATE TABLE "Payment" (
 CREATE TABLE "Quote" (
     "id" TEXT NOT NULL,
     "clientId" TEXT NOT NULL,
-    "garmentType" TEXT NOT NULL,
-    "fabricType" TEXT NOT NULL,
-    "color" TEXT NOT NULL,
     "totalQuantity" INTEGER NOT NULL,
     "message" TEXT,
-    "designImageUrl" TEXT,
-    "designZone" TEXT,
-    "designX" DOUBLE PRECISION,
-    "designY" DOUBLE PRECISION,
-    "designScaleX" DOUBLE PRECISION,
-    "designScaleY" DOUBLE PRECISION,
-    "designRotation" DOUBLE PRECISION,
-    "quotedPrice" DECIMAL(12,4),
+    "estimatedPrice" DECIMAL(12,4),
+    "totalEstimatedPrice" DECIMAL(12,4),
+    "finalPrice" DECIMAL(12,4),
     "merchantMessage" TEXT,
     "unfeasibleReason" TEXT,
     "rejectionReason" TEXT,
     "whatsappUrl" TEXT,
-    "status" "QuoteStatus" NOT NULL DEFAULT 'PENDING',
+    "status" "QuoteMacroStatus" NOT NULL DEFAULT 'PENDING',
+    "isVisited" BOOLEAN NOT NULL DEFAULT false,
+    "viabilityStatus" "ViabilityStatus" NOT NULL DEFAULT 'PENDING',
+    "formalizationStatus" "FormalizationStatus" NOT NULL DEFAULT 'PENDING',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Quote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PaymentQuote" (
+    "id" TEXT NOT NULL,
+    "totalFinalAmount" DECIMAL(12,2) NOT NULL,
+    "discounts" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "amountToPay" DECIMAL(12,2) NOT NULL,
+    "status" "PaymentQuoteStatus" NOT NULL DEFAULT 'PENDING',
+    "amountPaid" DECIMAL(12,2) NOT NULL DEFAULT 0,
+    "paymentMethod" "PaymentMethod",
+    "paidAt" TIMESTAMP(3),
+    "receiptType" "ReceiptType",
+    "receiptUrl" TEXT,
+    "quoteId" TEXT NOT NULL,
+
+    CONSTRAINT "PaymentQuote_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Design" (
+    "id" TEXT NOT NULL,
+    "placement" "DesignPlacement" NOT NULL,
+    "techniqueId" TEXT NOT NULL,
+    "baseGarmentUrl" TEXT NOT NULL,
+    "logoUrl" TEXT NOT NULL,
+    "positionX" DOUBLE PRECISION NOT NULL,
+    "positionY" DOUBLE PRECISION NOT NULL,
+    "width" DOUBLE PRECISION NOT NULL,
+    "height" DOUBLE PRECISION NOT NULL,
+    "rotation" DOUBLE PRECISION NOT NULL,
+    "canvasWidth" DOUBLE PRECISION NOT NULL,
+    "canvasHeight" DOUBLE PRECISION NOT NULL,
+    "quoteId" TEXT NOT NULL,
+
+    CONSTRAINT "Design_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -265,8 +368,9 @@ CREATE TABLE "QuoteItem" (
 CREATE TABLE "QuoteStatusHistory" (
     "id" TEXT NOT NULL,
     "quoteId" TEXT NOT NULL,
-    "fromStatus" "QuoteStatus",
-    "toStatus" "QuoteStatus" NOT NULL,
+    "changedField" TEXT NOT NULL,
+    "oldValue" TEXT,
+    "newValue" TEXT NOT NULL,
     "changedBy" TEXT NOT NULL,
     "note" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -294,13 +398,15 @@ CREATE TABLE "ErrorLog" (
     "id" TEXT NOT NULL,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "severity" "ErrorSeverity" NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "ErrorLogType" NOT NULL,
     "module" TEXT NOT NULL,
     "message" TEXT NOT NULL,
     "stackTrace" TEXT,
     "isReviewed" BOOLEAN NOT NULL DEFAULT false,
     "reviewedBy" TEXT,
     "reviewedAt" TIMESTAMP(3),
+    "userID" TEXT,
+    "endpoint" TEXT,
 
     CONSTRAINT "ErrorLog_pkey" PRIMARY KEY ("id")
 );
@@ -315,7 +421,10 @@ CREATE UNIQUE INDEX "PasswordResetToken_token_key" ON "PasswordResetToken"("toke
 CREATE UNIQUE INDEX "Category_name_key" ON "Category"("name");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ProductVariant_productId_sizeId_color_key" ON "ProductVariant"("productId", "sizeId", "color");
+CREATE UNIQUE INDEX "Technique_name_key" ON "Technique"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ProductVariant_productId_sizeId_colorId_key" ON "ProductVariant"("productId", "sizeId", "colorId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Cart_userId_key" ON "Cart"("userId");
@@ -345,10 +454,19 @@ ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_productId_fkey" FORE
 ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_sizeId_fkey" FOREIGN KEY ("sizeId") REFERENCES "SizeAttribute"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ProductVariant" ADD CONSTRAINT "ProductVariant_colorId_fkey" FOREIGN KEY ("colorId") REFERENCES "Color"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "ProductImage" ADD CONSTRAINT "ProductImage_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SizeGuide" ADD CONSTRAINT "SizeGuide_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductToTechnique" ADD CONSTRAINT "ProductToTechnique_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProductToTechnique" ADD CONSTRAINT "ProductToTechnique_techniqueId_fkey" FOREIGN KEY ("techniqueId") REFERENCES "Technique"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Cart" ADD CONSTRAINT "Cart_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -378,6 +496,15 @@ ALTER TABLE "Payment" ADD CONSTRAINT "Payment_orderId_fkey" FOREIGN KEY ("orderI
 ALTER TABLE "Quote" ADD CONSTRAINT "Quote_clientId_fkey" FOREIGN KEY ("clientId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "PaymentQuote" ADD CONSTRAINT "PaymentQuote_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "Quote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Design" ADD CONSTRAINT "Design_techniqueId_fkey" FOREIGN KEY ("techniqueId") REFERENCES "Technique"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Design" ADD CONSTRAINT "Design_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "Quote"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "QuoteItem" ADD CONSTRAINT "QuoteItem_quoteId_fkey" FOREIGN KEY ("quoteId") REFERENCES "Quote"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -388,3 +515,4 @@ ALTER TABLE "QuoteStatusHistory" ADD CONSTRAINT "QuoteStatusHistory_quoteId_fkey
 
 -- AddForeignKey
 ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+

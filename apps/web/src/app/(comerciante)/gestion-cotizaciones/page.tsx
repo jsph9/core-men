@@ -37,7 +37,9 @@ export default function CotizacionesComerciante() {
   // 4. Extracción dinámica de Tipos de Prenda únicos de la BD para el menú desplegable
   const uniqueGarmentTypes = useMemo(() => {
     if (!quotes || quotes.length === 0) return [];
-    const types = quotes.map((q: any) => q.garmentType);
+    const types = quotes
+      .map((q: any) => q.garmentType)
+      .filter((t: any): t is string => typeof t === "string" && t.trim() !== "" && t !== "Todos");
     return Array.from(new Set(types)) as string[];
   }, [quotes]);
 
@@ -207,7 +209,7 @@ export default function CotizacionesComerciante() {
               onChange={(e) => { setGarmentFilter(e.target.value); setCurrentPage(1); }}
               className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 outline-none"
             >
-              <option value="Todos">Cualquier prenda</option>
+              <option key="Todos" value="Todos">Cualquier prenda</option>
               {uniqueGarmentTypes.map((type: string) => (
                 <option key={type} value={type}>{type}</option>
               ))}

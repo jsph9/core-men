@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { DiscountService } from '../cart/discount.service';
 import { EmailService } from '../shared/email.service';
 import { PdfService } from '../shared/pdf.service';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, ReceiptType, PaymentStatus, PaymentMethod } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
@@ -58,20 +58,23 @@ export class OrdersService {
 
       const totalAmount = itemsToCreate.reduce((acc, item) => acc + item.subtotal, 0);
 
+      const receiptTypeEnum = receiptType === 'factura' ? ReceiptType.FACTURA : ReceiptType.BOLETA;
+      const paymentMethodEnum = preferredPaymentMethod?.toUpperCase() === 'YAPE' ? PaymentMethod.YAPE : PaymentMethod.CARD;
+
       // Create Order
       const order = await tx.order.create({
         data: {
           userId,
           totalAmount,
-          receiptType,
+          receiptType: receiptTypeEnum,
           status: OrderStatus.REGISTERED,
           payment: {
             create: {
               stripePaymentId: paymentIntentId,
               amount: paymentAmount,
               currency: paymentCurrency.toUpperCase(),
-              status: 'confirmed',
-              method: preferredPaymentMethod,
+              status: PaymentStatus.CONFIRMED,
+              method: paymentMethodEnum,
               paidAt: new Date()
             }
           },
@@ -110,7 +113,7 @@ export class OrdersService {
         items: {
           include: {
             productVariant: {
-              include: { product: true },
+              include: { product: true, size: true, color: true },
             },
           },
         },
@@ -119,9 +122,9 @@ export class OrdersService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const activeStatuses: OrderStatus[] = [OrderStatus.REGISTERED, OrderStatus.IN_PRODUCTION, OrderStatus.READY_FOR_PICKUP];
+    const activeStatuses: OrderStatus[] = [OrderStatus.REGISTERED, OrderStatus.IN_PREPARATION, OrderStatus.READY_FOR_PICKUP];
     
-    return orders.sort((a, b) => {
+    const sorted = orders.sort((a, b) => {
       const aIsActive = activeStatuses.includes(a.status);
       const bIsActive = activeStatuses.includes(b.status);
       
@@ -129,32 +132,63 @@ export class OrdersService {
       if (!aIsActive && bIsActive) return 1;
       return b.createdAt.getTime() - a.createdAt.getTime();
     });
+
+    return sorted.map((order) => ({
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        productVariant: {
+          ...item.productVariant,
+          color: (item.productVariant as any).color?.name || '',
+        },
+      })),
+    }));
   }
 
   async getMerchantOrders() {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         status: {
-          in: [OrderStatus.REGISTERED, OrderStatus.IN_PRODUCTION, OrderStatus.READY_FOR_PICKUP]
+          in: [OrderStatus.REGISTERED, OrderStatus.IN_PREPARATION, OrderStatus.READY_FOR_PICKUP]
         }
       },
       include: {
         items: {
           include: {
             productVariant: {
-              include: { product: true }
+              include: { product: true, size: true, color: true }
             }
           }
         },
         payment: true,
         user: {
           select: {
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true
           }
         }
       },
       orderBy: { createdAt: 'desc' }
+    });
+
+    return orders.map(order => {
+      const { user, items, ...rest } = order;
+      const name = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Cliente General';
+      return {
+        ...rest,
+        user: {
+          name,
+          email: user?.email || ''
+        },
+        items: items.map((item) => ({
+          ...item,
+          productVariant: {
+            ...item.productVariant,
+            color: (item.productVariant as any).color?.name || '',
+          },
+        })),
+      };
     });
   }
 
@@ -162,7 +196,7 @@ export class OrdersService {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        items: { include: { productVariant: { include: { product: true } } } },
+        items: { include: { productVariant: { include: { product: true, size: true, color: true } } } },
         payment: true,
         statusHistory: { orderBy: { createdAt: 'desc' } },
       },
@@ -172,7 +206,16 @@ export class OrdersService {
       throw new BadRequestException('Pedido no encontrado');
     }
 
-    return order;
+    return {
+      ...order,
+      items: order.items.map((item) => ({
+        ...item,
+        productVariant: {
+          ...item.productVariant,
+          color: (item.productVariant as any).color?.name || '',
+        },
+      })),
+    };
   }
 
   async updateOrderStatus(orderId: string, status: OrderStatus, merchantId: string, reason?: string) {
@@ -185,8 +228,8 @@ export class OrdersService {
       throw new BadRequestException('Pedido no encontrado');
     }
 
-    if (status === OrderStatus.IN_PRODUCTION && order.payment?.status !== 'confirmed') {
-      throw new BadRequestException('No se puede avanzar a producción sin pago confirmado');
+    if (status === OrderStatus.IN_PREPARATION && order.payment?.status !== PaymentStatus.CONFIRMED) {
+      throw new BadRequestException('No se puede avanzar a preparación sin pago confirmado');
     }
 
     const updated = await this.prisma.order.update({
@@ -227,7 +270,7 @@ export class OrdersService {
     }
 
     const pdfBuffer = await this.pdfService.generateOrderReceipt(order);
-    const receiptType = order.receiptType || 'boleta';
+    const receiptType = (order.receiptType || 'BOLETA').toLowerCase();
 
     return {
       pdfBuffer,

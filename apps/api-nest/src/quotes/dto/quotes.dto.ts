@@ -1,5 +1,4 @@
 import { IsString, IsNumber, IsOptional, Min, IsEnum } from 'class-validator';
-import { QuoteStatus } from '@prisma/client';
 
 export class CreateQuoteDto {
   @IsString()

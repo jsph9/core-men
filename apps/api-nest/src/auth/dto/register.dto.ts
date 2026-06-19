@@ -12,8 +12,21 @@ export class RegisterDto {
   @Matches(/[0-9]/, { message: 'La contraseña debe tener al menos un número' })
   password: string;
 
+  @IsOptional()
   @IsString()
-  name: string;
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  maternalLastName?: string;
 
   @IsOptional()
   @IsEnum(Role)

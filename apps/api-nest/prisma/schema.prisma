@@ -17,101 +17,152 @@ enum Role {
   ADMIN
 }
 
+enum ClientType {
+  NATURAL
+  LEGAL
+}
+
 model User {
-  id                  String    @id @default(uuid())
-  name                String
+  id String @id @default(uuid())
+
+  // Nombres separados
+  firstName        String
+  lastName         String
+  maternalLastName String?
+
   email               String    @unique
   passwordHash        String
   role                Role      @default(CLIENT)
+  clientType          ClientType @default(NATURAL)
   isActive            Boolean   @default(true)
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
-  whatsappNumber      String?   // Solo para Comerciante
+  whatsappNumber      String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+  termsAccepted       Boolean   @default(true)
+  termsAcceptedAt     DateTime  @default(now())
+  businessName        String?
+  ruc                 String? 
+  dni                 String?
 
-  orders              Order[]
-  quotes              Quote[]
-  cart                Cart?
-  passwordResets      PasswordResetToken[]
-  auditLogs           AuditLog[]           @relation("AuditUser")
+
+
+  orders         Order[]
+  quotes         Quote[]
+  cart           Cart?
+  passwordResets PasswordResetToken[]
+  auditLogs      AuditLog[]           @relation("AuditUser")
 }
 
 model PasswordResetToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
+  id        String    @id @default(uuid())
+  token     String    @unique
   userId    String
   expiresAt DateTime
   usedAt    DateTime?
-  user      User     @relation(fields: [userId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 }
 
 // ─── CATÁLOGO ──────────────────────────────────────────────────────────────
 
 model Category {
-  id        String    @id @default(uuid())
-  name      String    @unique  // Polos, Poleras, Casacas
-  isActive  Boolean   @default(true)
-  products  Product[]
+  id       String    @id @default(uuid())
+  name     String    @unique // Polos, Poleras, Casacas
+  isActive Boolean   @default(true)
+  products Product[]
 }
 
-model SizeAttribute {
+model Color {
   id       String           @id @default(uuid())
-  value    String           // S, M, L, XL, XXL
+  name     String
+  hexCode  String // Reemplaza codigoRGB
   isActive Boolean          @default(true)
   variants ProductVariant[]
 }
 
+model Technique {
+  id          String    @id @default(uuid())
+  name        String    @unique // Ej: Bordado, Sublimado, Serigrafía, DTF
+  description String?
+  isActive    Boolean   @default(true)
+
+  // ── Campos de Reglas ──
+  ruleType    String? 
+  minValue    Decimal?          @db.Decimal(10, 2) // Opcional, por si una técnica no tiene mínimo
+  maxValue    Decimal?          @db.Decimal(10, 2) // Opcional, por si no hay límite superior
+  
+  // Relación M:N con los productos
+  products    ProductToTechnique[] 
+  designs     Design[]
+}
+
+model SizeAttribute {
+  id           String           @id @default(uuid())
+  value        String // Ej: Extra Grande
+  abbreviation String // Sigla (S, M, L, XL, XXL)
+  isActive     Boolean          @default(true)
+  variants     ProductVariant[]
+}
+
 model FabricAttribute {
   id       String    @id @default(uuid())
-  value    String    // Algodón, Piqué, Dry Fit
+  value    String // Algodón, Piqué, Dry Fit
+  price    Decimal   @default(0) @db.Decimal(12, 4) // Costo extra de personalización
   isActive Boolean   @default(true)
   products Product[]
 }
 
 model Product {
-  id              String          @id @default(uuid())
-  name            String
-  description     String?
-  basePrice       Decimal         @db.Decimal(12, 4)
-  sizeGuideText   String?
-  isBaseProduct   Boolean         @default(true)
-  fiberComposition String?        // NTP 231.400:2020
-  careInstructions String?
-  isActive        Boolean         @default(true)
-  categoryId      String
-  fabricId        String
-  category        Category        @relation(fields: [categoryId], references: [id])
-  fabric          FabricAttribute @relation(fields: [fabricId], references: [id])
-  variants        ProductVariant[]
-  images          ProductImage[]
-  sizeGuide       SizeGuide[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  id               String  @id @default(uuid())
+  name             String
+  description      String?
+  basePrice        Decimal @db.Decimal(12, 4)
+  sizeGuideText    String?
+  isBaseProduct    Boolean @default(true)
+  fiberComposition String // NTP 231.400:2020
+  careInstructions String
+  isActive         Boolean @default(true)
+  categoryId       String
+  fabricId         String
+
+  category  Category         @relation(fields: [categoryId], references: [id])
+  fabric    FabricAttribute  @relation(fields: [fabricId], references: [id])
+  variants  ProductVariant[]
+  images    ProductImage[]
+  sizeGuide SizeGuide[]
+  supportedTechniques ProductToTechnique[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 }
 
 model ProductVariant {
-  id          String    @id @default(uuid())
-  productId   String
-  sizeId      String
-  color       String
-  stock       Int       @default(0)
-  price       Decimal?  @db.Decimal(12, 4)  // Sobreescribe basePrice si se define
-  discountPct Decimal?  @db.Decimal(7, 4)
-  isActive    Boolean   @default(true)
-  product     Product   @relation(fields: [productId], references: [id])
-  size        SizeAttribute @relation(fields: [sizeId], references: [id])
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  quoteItems  QuoteItem[]
+  id        String @id @default(uuid())
+  productId String
+  sizeId    String
+  colorId   String // Reemplaza el String "color"
 
-  @@unique([productId, sizeId, color])
+  stock       Int      @default(0)
+  price       Decimal? @db.Decimal(12, 4)
+  discountPct Decimal? @db.Decimal(7, 4)
+  isActive    Boolean  @default(true)
+
+  product Product       @relation(fields: [productId], references: [id])
+  size    SizeAttribute @relation(fields: [sizeId], references: [id])
+  color   Color         @relation(fields: [colorId], references: [id])
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  quoteItems QuoteItem[]
+
+  // Constraint único actualizado con colorId
+  @@unique([productId, sizeId, colorId])
 }
 
 model ProductImage {
   id        String  @id @default(uuid())
   productId String
-  url       String  // Cloudinary URL
+  url       String // Cloudinary URL
   isPrimary Boolean @default(false)
   product   Product @relation(fields: [productId], references: [id])
 }
@@ -125,6 +176,22 @@ model SizeGuide {
   sleeveCm  Float
   product   Product @relation(fields: [productId], references: [id])
 }
+
+model ProductToTechnique {
+  productId   String
+  techniqueId String
+
+  // ── Precio Específico ──
+  specificPrice Decimal? @db.Decimal(12, 4)
+
+  // Relaciones
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  technique Technique @relation(fields: [techniqueId], references: [id], onDelete: Cascade)
+
+  // Clave primaria compuesta para asegurar que no se repita la misma técnica en el mismo producto
+  @@id([productId, techniqueId])
+}
+
 
 // ─── CARRITO ───────────────────────────────────────────────────────────────
 
@@ -150,21 +217,21 @@ model CartItem {
 // ─── DESCUENTOS ────────────────────────────────────────────────────────────
 
 model DiscountRule {
-  id             String  @id @default(uuid())
-  minQuantity    Int
-  maxQuantity    Int?    // null = sin límite superior
-  percentage     Decimal @db.Decimal(7, 4)
-  description    String?
-  isActive       Boolean @default(true)
+  id          String  @id @default(uuid())
+  minQuantity Int
+  maxQuantity Int? // null = sin límite superior
+  percentage  Decimal @db.Decimal(7, 4)
+  description String?
+  isActive    Boolean @default(true)
 }
 
 model SeasonDiscount {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   name           String
   startDate      DateTime
   endDate        DateTime
-  percentage     Decimal  @db.Decimal(7, 4)
-  isAccumulative Boolean  @default(false)
+  percentage     Decimal      @db.Decimal(7, 4)
+  isAccumulative Boolean      @default(false)
   status         SeasonStatus @default(SCHEDULED)
   appliesTo      String[] // Categorías específicas; vacío = todas
 }
@@ -180,99 +247,191 @@ enum SeasonStatus {
 
 enum OrderStatus {
   REGISTERED
+  IN_PREPARATION
+  READY_FOR_PICKUP
+  DELIVERED
+  CANCELLED
+}
+
+enum ReceiptType {
+  BOLETA
+  FACTURA
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  userId       String
+  status       OrderStatus @default(REGISTERED)
+  totalAmount  Decimal     @db.Decimal(12, 2)
+  receiptUrl   String? // URL del PDF del comprobante
+  receiptType  ReceiptType? // 'boleta' | 'factura'
+  cancelReason String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id])
+  items         OrderItem[]
+  payment       Payment?
+  statusHistory OrderStatusHistory[]
+}
+
+model OrderItem {
+  id               String  @id @default(uuid())
+  orderId          String
+  productVariantId String
+  quantity         Int
+  unitPrice        Decimal @db.Decimal(12, 4)
+  discountPct      Decimal @default(0) @db.Decimal(7, 4)
+  subtotal         Decimal @db.Decimal(12, 2)
+
+  order          Order          @relation(fields: [orderId], references: [id])
+  productVariant ProductVariant @relation(fields: [productVariantId], references: [id])
+}
+
+model OrderStatusHistory {
+  id         String       @id @default(uuid())
+  orderId    String
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  changedBy  String // userId del Comerciante o Sistema
+  reason     String?
+  createdAt  DateTime     @default(now())
+  order      Order        @relation(fields: [orderId], references: [id])
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+enum PaymentMethod {
+  CARD
+  YAPE
+  TRANSFER
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  orderId         String    @unique
+  stripePaymentId String    @unique
+  amount          Decimal   @db.Decimal(12, 2)
+  currency        String    @default("PEN")
+  status          PaymentStatus @default(PENDING) // pending | confirmed | failed
+  method          PaymentMethod?  // card | yape
+  paidAt          DateTime?
+  order           Order     @relation(fields: [orderId], references: [id])
+}
+
+// ─── COTIZACIONES ──────────────────────────────────────────────────────────
+
+enum QuoteMacroStatus {
+  PENDING
+  IN_REVIEW
+  WAITING_PAYMENT // "pago"
   IN_PRODUCTION
   READY_FOR_PICKUP
   DELIVERED
   CANCELLED
 }
 
-model Order {
-  id             String      @id @default(uuid())
-  userId         String
-  status         OrderStatus @default(REGISTERED)
-  totalAmount    Decimal     @db.Decimal(12, 2)
-  receiptUrl     String?     // URL del PDF del comprobante
-  receiptType    String?     // 'boleta' | 'factura'
-  cancelReason   String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  user           User        @relation(fields: [userId], references: [id])
-  items          OrderItem[]
-  payment        Payment?
-  statusHistory  OrderStatusHistory[]
-}
-
-model OrderItem {
-  id               String         @id @default(uuid())
-  orderId          String
-  productVariantId String
-  quantity         Int
-  unitPrice        Decimal        @db.Decimal(12, 4)
-  discountPct      Decimal        @db.Decimal(7, 4) @default(0)
-  subtotal         Decimal        @db.Decimal(12, 2)
-  order            Order          @relation(fields: [orderId], references: [id])
-  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id])
-}
-
-model OrderStatusHistory {
-  id        String      @id @default(uuid())
-  orderId   String
-  fromStatus OrderStatus?
-  toStatus  OrderStatus
-  changedBy String      // userId del Comerciante o Sistema
-  reason    String?
-  createdAt DateTime    @default(now())
-  order     Order       @relation(fields: [orderId], references: [id])
-}
-
-model Payment {
-  id              String   @id @default(uuid())
-  orderId         String   @unique
-  stripePaymentId String   @unique
-  amount          Decimal  @db.Decimal(12, 2)
-  currency        String   @default("PEN")
-  status          String   // pending | confirmed | failed
-  method          String   // card | yape
-  paidAt          DateTime?
-  order           Order    @relation(fields: [orderId], references: [id])
-}
-
-// ─── COTIZACIONES ──────────────────────────────────────────────────────────
-
-enum QuoteStatus {
+enum ViabilityStatus {
   PENDING
-  QUOTED
-  APPROVED
-  REJECTED
-  UNFEASIBLE
+  VIABLE
+  NONVIABLE
+}
+
+enum FormalizationStatus {
+  PENDING         // Esperando que el cliente acepte
+  IN_NEGOTIATION  // Hablando por WhatsApp
+  UPDATED         // Precio/Diseño ajustado, listo para pago
+  CONFIRMED       // Cliente aceptó la propuesta
+  REJECTED        // Cliente dijo explícitamente "No"
+  EXPIRED         // Cliente no respondió en el tiempo límite
 }
 
 model Quote {
-  id               String      @id @default(uuid())
-  clientId         String
-  garmentType      String
-  fabricType       String
-  color            String
-  totalQuantity    Int
-  message          String?
-  designImageUrl   String?     // Cloudinary URL
-  designZone       String?     // chest | back | left_arm | right_arm
-  designX          Float?      // Posición relativa (%)
-  designY          Float?
-  designScaleX     Float?
-  designScaleY     Float?
-  designRotation   Float?
-  quotedPrice      Decimal?    @db.Decimal(12, 4)
+  id            String  @id @default(uuid())
+  clientId      String
+  totalQuantity Int
+  message       String?
+
+  // Precios
+  estimatedPrice      Decimal? @db.Decimal(12, 4)
+  totalEstimatedPrice Decimal? @db.Decimal(12, 4)
+  finalPrice          Decimal? @db.Decimal(12, 4)
+
+  // Mensajes y Tracking
   merchantMessage  String?
   unfeasibleReason String?
   rejectionReason  String?
   whatsappUrl      String?
-  status           QuoteStatus @default(PENDING)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  client           User        @relation(fields: [clientId], references: [id])
-  items            QuoteItem[]
-  statusHistory    QuoteStatusHistory[]
+
+  //Estados de pedidos
+  status    QuoteMacroStatus @default(PENDING)
+  isVisited  Boolean @default(false)
+  viabilityStatus ViabilityStatus @default(PENDING)
+  formalizationStatus FormalizationStatus @default(PENDING)
+
+  //Fechas 
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  client        User                 @relation(fields: [clientId], references: [id])
+  items         QuoteItem[]
+  statusHistory QuoteStatusHistory[]
+
+  // Nuevas relaciones
+  designs  Design[]
+  payments PaymentQuote[]
+}
+
+enum PaymentQuoteStatus {
+  PENDING
+  FULL_PAYMENT
+  PARTIAL_PAYMENT
+  FAILED
+}
+
+model PaymentQuote {
+  id               String             @id @default(uuid())
+  totalFinalAmount Decimal            @db.Decimal(12, 2)
+  discounts        Decimal            @default(0) @db.Decimal(12, 2)
+  amountToPay      Decimal            @db.Decimal(12, 2)
+  status           PaymentQuoteStatus @default(PENDING)
+  amountPaid       Decimal            @default(0) @db.Decimal(12, 2)
+  paymentMethod    PaymentMethod?
+  paidAt           DateTime?
+  receiptType      ReceiptType?            // 'boleta' | 'factura'
+  receiptUrl       String?            // URL del PDF generado
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+}
+enum DesignPlacement {
+  FRONT
+  BACK
+  RIGHTSLEEVE
+  LEFTSLEEVE
+}
+
+model Design {
+  id             String @id @default(uuid())
+  placement      DesignPlacement // Lugar Personalizacion (ej. front, back)
+  techniqueId      String // Técnica (ej. bordado, estampado)
+  technique       Technique @relation(fields: [techniqueId], references: [id])
+  baseGarmentUrl String // URL prenda base
+  logoUrl        String // URL logo cliente
+
+  positionX    Float
+  positionY    Float
+  width        Float
+  height       Float
+  rotation     Float
+  canvasWidth  Float
+  canvasHeight Float
+
+  quoteId String
+  quote   Quote  @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 }
 
 model QuoteItem {
@@ -285,14 +444,22 @@ model QuoteItem {
 }
 
 model QuoteStatusHistory {
-  id         String      @id @default(uuid())
+  id         String    @id @default(uuid())
   quoteId    String
-  fromStatus QuoteStatus?
-  toStatus   QuoteStatus
+  
+  // ── Identificación del cambio ──
+  // Guardamos qué campo cambió: 'STATUS', 'VIABILITY', 'FORMALIZATION'
+  changedField String 
+  
+  // ── Valores del cambio ──
+  oldValue   String?
+  newValue   String
+  
   changedBy  String
   note       String?
-  createdAt  DateTime    @default(now())
-  quote      Quote       @relation(fields: [quoteId], references: [id])
+  createdAt  DateTime  @default(now())
+  
+  quote      Quote     @relation(fields: [quoteId], references: [id])
 }
 
 // ─── LOG DE AUDITORÍA ──────────────────────────────────────────────────────
@@ -318,7 +485,6 @@ model AuditLog {
   newValue      Json?
   ipAddress     String?
   user          User           @relation("AuditUser", fields: [userId], references: [id])
-  // Sin relación de Update ni Delete — append only
 }
 
 // ─── LOG DE ERRORES TÉCNICOS ───────────────────────────────────────────────
@@ -328,16 +494,25 @@ enum ErrorSeverity {
   HIGH
   MEDIUM
 }
+enum ErrorLogType {
+  UNHANDLED_EXCEPTION
+  API_FAILURE
+  TIMEOUT
+  DB_ERROR
+}
 
 model ErrorLog {
-  id          String        @id @default(uuid())
-  timestamp   DateTime      @default(now())
-  severity    ErrorSeverity
-  type        String        // UNHANDLED_EXCEPTION | API_FAILURE | TIMEOUT | DB_ERROR
-  module      String
-  message     String
-  stackTrace  String?       // Datos sensibles sanitizados
-  isReviewed  Boolean       @default(false)
-  reviewedBy  String?
-  reviewedAt  DateTime?
+  id         String        @id @default(uuid())
+  timestamp  DateTime      @default(now())
+  severity   ErrorSeverity
+  type       ErrorLogType // UNHANDLED_EXCEPTION | API_FAILURE | TIMEOUT | DB_ERROR
+  module     String
+  message    String
+  stackTrace String? // Datos sensibles sanitizados
+  isReviewed Boolean       @default(false)
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  userID     String? //ID del usuario especifico 
+  endpoint   String? // Guarda la ruta exacta de la API que fallo. 
 }

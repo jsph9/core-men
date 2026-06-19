@@ -26,6 +26,8 @@ export class AdminService {
           fabricId: data.fabricId,
           sizeGuideText: data.sizeGuideText,
           isBaseProduct: data.isBaseProduct ?? true,
+          fiberComposition: data.fiberComposition ?? '100% Algodón',
+          careInstructions: data.careInstructions ?? 'Lavar a máquina en frío con colores similares',
           ...(data.imageUrl ? {
             images: {
               create: [{ url: data.imageUrl, isPrimary: true }],
@@ -35,11 +37,36 @@ export class AdminService {
       });
 
       if (data.variants && data.variants.length > 0) {
+        // Resolve all unique colors
+        const uniqueColors = Array.from(new Set(data.variants.map(v => v.color)));
+        const colorMap = new Map<string, string>();
+        for (const colorStr of uniqueColors) {
+          const cleanColor = colorStr.trim();
+          let colorRecord = await tx.color.findFirst({
+            where: {
+              OR: [
+                { name: { equals: cleanColor, mode: 'insensitive' } },
+                { hexCode: { equals: cleanColor, mode: 'insensitive' } }
+              ]
+            }
+          });
+          if (!colorRecord) {
+            const isHex = cleanColor.startsWith('#');
+            colorRecord = await tx.color.create({
+              data: {
+                name: isHex ? `Color ${cleanColor}` : cleanColor,
+                hexCode: isHex ? cleanColor : '#000000',
+              }
+            });
+          }
+          colorMap.set(colorStr, colorRecord.id);
+        }
+
         await tx.productVariant.createMany({
           data: data.variants.map((v) => ({
             productId: product.id,
             sizeId: v.sizeId,
-            color: v.color,
+            colorId: colorMap.get(v.color)!,
             stock: v.stock,
             price: v.price ?? null,
             discountPct: v.discountPct ?? null,
@@ -47,10 +74,18 @@ export class AdminService {
         });
       }
 
-      return tx.product.findUnique({
+      const createdProd = await tx.product.findUnique({
         where: { id: product.id },
-        include: { variants: { include: { size: true } }, images: true, category: true, fabric: true, sizeGuide: true },
+        include: { variants: { include: { size: true, color: true } }, images: true, category: true, fabric: true, sizeGuide: true },
       });
+      if (!createdProd) return null;
+      return {
+        ...createdProd,
+        variants: createdProd.variants.map((v) => ({
+          ...v,
+          color: v.color?.name || '',
+        })),
+      };
     });
   }
 
@@ -70,6 +105,8 @@ export class AdminService {
           sizeGuideText: data.sizeGuideText,
           isBaseProduct: data.isBaseProduct ?? previous.isBaseProduct,
           isActive: data.isActive ?? previous.isActive,
+          fiberComposition: data.fiberComposition ?? previous.fiberComposition,
+          careInstructions: data.careInstructions ?? previous.careInstructions,
         },
       });
 
@@ -84,15 +121,51 @@ export class AdminService {
 
       if (data.variants) {
         if (data.variants.length > 0) {
-          const keepCombinations = data.variants.map(v => ({ sizeId: v.sizeId, color: v.color }));
+          // Resolve all unique colors
+          const uniqueColors = Array.from(new Set(data.variants.map(v => v.color)));
+          const colorMap = new Map<string, string>();
+          for (const colorStr of uniqueColors) {
+            const cleanColor = colorStr.trim();
+            let colorRecord = await tx.color.findFirst({
+              where: {
+                OR: [
+                  { name: { equals: cleanColor, mode: 'insensitive' } },
+                  { hexCode: { equals: cleanColor, mode: 'insensitive' } }
+                ]
+              }
+            });
+            if (!colorRecord) {
+              const isHex = cleanColor.startsWith('#');
+              colorRecord = await tx.color.create({
+                data: {
+                  name: isHex ? `Color ${cleanColor}` : cleanColor,
+                  hexCode: isHex ? cleanColor : '#000000',
+                }
+              });
+            }
+            colorMap.set(colorStr, colorRecord.id);
+          }
+
+          const keepCombinations = data.variants.map(v => ({
+            sizeId: v.sizeId,
+            colorId: colorMap.get(v.color)!,
+          }));
+
           await tx.productVariant.updateMany({
             where: { productId: id, NOT: { OR: keepCombinations } },
             data: { isActive: false },
           });
 
           for (const v of data.variants) {
+            const colorId = colorMap.get(v.color)!;
             await tx.productVariant.upsert({
-              where: { productId_sizeId_color: { productId: id, sizeId: v.sizeId, color: v.color } },
+              where: {
+                productId_sizeId_colorId: {
+                  productId: id,
+                  sizeId: v.sizeId,
+                  colorId,
+                }
+              },
               update: {
                 stock: v.stock,
                 price: v.price ?? null,
@@ -102,7 +175,7 @@ export class AdminService {
               create: {
                 productId: id,
                 sizeId: v.sizeId,
-                color: v.color,
+                colorId,
                 stock: v.stock,
                 price: v.price ?? null,
                 discountPct: v.discountPct ?? null,
@@ -118,16 +191,24 @@ export class AdminService {
         }
       }
 
-      return tx.product.findUnique({
+      const updatedProd = await tx.product.findUnique({
         where: { id: product.id },
         include: {
-          variants: { include: { size: true } },
+          variants: { include: { size: true, color: true } },
           images: true,
           category: true,
           fabric: true,
           sizeGuide: true,
         },
       });
+      if (!updatedProd) return null;
+      return {
+        ...updatedProd,
+        variants: updatedProd.variants.map((v) => ({
+          ...v,
+          color: v.color?.name || '',
+        })),
+      };
     });
   }
 
@@ -318,7 +399,7 @@ export class AdminService {
     return { message: 'Tela eliminada' };
   }
 
-  async createSize(value: string, userId: string, ipAddress?: string) {
+  async createSize(value: string, userId: string, ipAddress?: string, abbreviation?: string) {
     if (!value || value.trim() === '') {
       throw new BadRequestException('El valor de la talla no puede estar vacío.');
     }
@@ -327,7 +408,27 @@ export class AdminService {
     if (existing) {
       throw new ConflictException('Ya existe esta talla en el sistema.');
     }
-    const created = await this.prisma.sizeAttribute.create({ data: { value: cleanValue } });
+
+    let cleanAbbr = abbreviation?.trim();
+    if (!cleanAbbr) {
+      if (cleanValue.length <= 3) {
+        cleanAbbr = cleanValue.toUpperCase();
+      } else {
+        const words = cleanValue.split(/\s+/);
+        if (words.length > 1) {
+          cleanAbbr = words.map(w => w[0]).join('').toUpperCase();
+        } else {
+          cleanAbbr = cleanValue[0].toUpperCase();
+        }
+      }
+    }
+
+    const created = await this.prisma.sizeAttribute.create({
+      data: {
+        value: cleanValue,
+        abbreviation: cleanAbbr,
+      }
+    });
     await this.auditService.logAudit({
       type: 'STOCK_ADJUST',
       userId,
@@ -339,7 +440,7 @@ export class AdminService {
     return created;
   }
 
-  async updateSize(id: string, value?: string, isActive?: boolean, userId?: string, ipAddress?: string) {
+  async updateSize(id: string, value?: string, abbreviation?: string, isActive?: boolean, userId?: string, ipAddress?: string) {
     if (value !== undefined) {
       if (!value || value.trim() === '') {
         throw new BadRequestException('El valor de la talla no puede estar vacío.');
@@ -357,6 +458,7 @@ export class AdminService {
       where: { id },
       data: {
         value: typeof value === 'string' ? value.trim() : undefined,
+        abbreviation: typeof abbreviation === 'string' ? abbreviation.trim() : undefined,
         isActive: typeof isActive === 'boolean' ? isActive : undefined,
       },
     });
@@ -390,10 +492,19 @@ export class AdminService {
 
   // ──── User Management ──────────────────────────────────────────────────
   async getUsers() {
-    return this.prisma.user.findMany({
-      select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true, lockedUntil: true },
+    const users = await this.prisma.user.findMany({
+      select: { id: true, email: true, firstName: true, lastName: true, role: true, isActive: true, createdAt: true, lockedUntil: true },
       orderBy: { createdAt: 'desc' },
     });
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: `${user.firstName} ${user.lastName || ''}`.trim(),
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      lockedUntil: user.lockedUntil,
+    }));
   }
 
   async createUser(data: any, adminId: string, ipAddress?: string) {
@@ -405,29 +516,52 @@ export class AdminService {
       throw new ConflictException('Ya existe un usuario con este correo electrónico.');
     }
     const passwordHash = await bcrypt.hash(data.password, 12);
+
+    let firstName = data.firstName || '';
+    let lastName = data.lastName || '';
+    if (!firstName && data.name) {
+      const parts = data.name.trim().split(/\s+/);
+      firstName = parts[0] || '';
+      lastName = parts.slice(1).join(' ') || '';
+    }
+
     const user = await this.prisma.user.create({
       data: {
         email: data.email,
-        name: data.name,
+        firstName,
+        lastName,
         passwordHash,
         role: data.role,
         isActive: data.isActive ?? true,
       }
     });
+
+    const fullName = `${user.firstName} ${user.lastName || ''}`.trim();
+
     await this.auditService.logAudit({
       type: 'USER_MGMT',
       userId: adminId,
       entityType: 'User',
       entityId: user.id,
-      newValue: { name: user.name, email: user.email, role: user.role, isActive: user.isActive },
+      newValue: { name: fullName, email: user.email, role: user.role, isActive: user.isActive },
       ipAddress,
     });
-    return user;
+
+    return {
+      ...user,
+      name: fullName,
+    };
   }
 
   async updateUser(id: string, data: any, adminId: string, ipAddress?: string) {
     const updateData: any = {};
-    if (data.name !== undefined) updateData.name = data.name;
+    if (data.name !== undefined) {
+      const parts = data.name.trim().split(/\s+/);
+      updateData.firstName = parts[0] || '';
+      updateData.lastName = parts.slice(1).join(' ') || '';
+    }
+    if (data.firstName !== undefined) updateData.firstName = data.firstName;
+    if (data.lastName !== undefined) updateData.lastName = data.lastName;
     if (data.email !== undefined) updateData.email = data.email;
     if (data.role !== undefined) updateData.role = data.role;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
@@ -439,15 +573,22 @@ export class AdminService {
       where: { id },
       data: updateData,
     });
+
+    const fullName = `${updated.firstName} ${updated.lastName || ''}`.trim();
+
     await this.auditService.logAudit({
       type: 'USER_MGMT',
       userId: adminId,
       entityType: 'User',
       entityId: id,
-      newValue: { name: updated.name, email: updated.email, role: updated.role, isActive: updated.isActive },
+      newValue: { name: fullName, email: updated.email, role: updated.role, isActive: updated.isActive },
       ipAddress,
     });
-    return updated;
+
+    return {
+      ...updated,
+      name: fullName,
+    };
   }
 
   async revokeUser(id: string, adminId: string, ipAddress?: string) {
@@ -637,16 +778,24 @@ export class AdminService {
 
   // ──── Dashboard & Reports ──────────────────────────────────────────────
   async getDashboardStats() {
-    const [totalOrders, totalUsers, totalProducts, recentOrders] = await Promise.all([
+    const [totalOrders, totalUsers, totalProducts, recentOrdersRaw] = await Promise.all([
       this.prisma.order.count(),
       this.prisma.user.count(),
       this.prisma.product.count({ where: { isActive: true } }),
       this.prisma.order.findMany({
         take: 5,
         orderBy: { createdAt: 'desc' },
-        include: { user: { select: { name: true } } },
+        include: { user: { select: { firstName: true, lastName: true } } },
       }),
     ]);
+
+    const recentOrders = recentOrdersRaw.map(order => ({
+      ...order,
+      user: {
+        name: `${order.user?.firstName || ''} ${order.user?.lastName || ''}`.trim() || 'Cliente General',
+      }
+    }));
+
     return { totalOrders, totalUsers, totalProducts, recentOrders };
   }
 
@@ -655,13 +804,14 @@ export class AdminService {
     if (dateFrom) where.createdAt = { ...where.createdAt, gte: new Date(dateFrom) };
     if (dateTo) where.createdAt = { ...where.createdAt, lte: new Date(dateTo) };
 
-    return this.prisma.order.findMany({
+    const sales = await this.prisma.order.findMany({
       where,
       include: {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
           },
         },
@@ -678,6 +828,15 @@ export class AdminService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return sales.map(sale => ({
+      ...sale,
+      user: sale.user ? {
+        id: sale.user.id,
+        name: `${sale.user.firstName} ${sale.user.lastName || ''}`.trim(),
+        email: sale.user.email,
+      } : null,
+    }));
   }
 
   // ──── Audit Log ────────────────────────────────────────────────────────
@@ -686,16 +845,24 @@ export class AdminService {
     if (type) where.type = type;
     if (userId) where.userId = userId;
 
-    const [logs, total] = await Promise.all([
+    const [logsRaw, total] = await Promise.all([
       this.prisma.auditLog.findMany({
         where,
-        include: { user: { select: { name: true, email: true } } },
+        include: { user: { select: { firstName: true, lastName: true, email: true } } },
         orderBy: { timestamp: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
       this.prisma.auditLog.count({ where }),
     ]);
+
+    const logs = logsRaw.map(log => ({
+      ...log,
+      user: log.user ? {
+        name: `${log.user.firstName} ${log.user.lastName || ''}`.trim(),
+        email: log.user.email,
+      } : null,
+    }));
 
     return { data: logs, meta: { total, page, limit } };
   }

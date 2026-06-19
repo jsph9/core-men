@@ -58,6 +58,14 @@ export class CreateProductDto {
   imageUrl?: string;
 
   @IsOptional()
+  @IsString()
+  fiberComposition?: string;
+
+  @IsOptional()
+  @IsString()
+  careInstructions?: string;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ProductVariantDto)

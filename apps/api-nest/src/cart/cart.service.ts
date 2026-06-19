@@ -20,6 +20,7 @@ export class CartService {
               include: {
                 product: true,
                 size: true,
+                color: true,
               },
             },
           },
@@ -30,7 +31,7 @@ export class CartService {
     if (!cart) {
       cart = await this.prisma.cart.create({
         data: { userId },
-        include: { items: { include: { productVariant: { include: { product: true, size: true } } } } },
+        include: { items: { include: { productVariant: { include: { product: true, size: true, color: true } } } } },
       });
     }
 
@@ -63,7 +64,10 @@ export class CartService {
           cartId: item.cartId,
           productVariantId: item.productVariantId,
           quantity: item.quantity,
-          productVariant: item.productVariant,
+          productVariant: {
+            ...item.productVariant,
+            color: (item.productVariant as any).color?.name || '',
+          },
           appliedDiscountPct: discountInfo.appliedPercentage,
           discountType: discountInfo.type,
           originalUnitPrice: Number(basePrice),

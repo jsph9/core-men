@@ -14,8 +14,9 @@ export class UsersService {
     if (!user) {
       throw new BadRequestException('Usuario no encontrado');
     }
-    const { id, email, name, role, whatsappNumber } = user;
-    return { id, email, name, role, whatsappNumber };
+    const { id, email, firstName, lastName, role, whatsappNumber } = user;
+    const fullName = `${firstName} ${lastName || ''}`.trim();
+    return { id, email, name: fullName, role, whatsappNumber };
   }
 
   async updateMyProfile(userId: string, data: UpdateProfileDto) {
@@ -31,10 +32,12 @@ export class UsersService {
       throw new BadRequestException('Usuario no encontrado');
     }
 
-    const updateData: { name?: string; email?: string; passwordHash?: string } = {};
+    const updateData: { firstName?: string; lastName?: string; email?: string; passwordHash?: string } = {};
 
     if (data.name) {
-      updateData.name = data.name;
+      const parts = data.name.trim().split(/\s+/);
+      updateData.firstName = parts[0] || '';
+      updateData.lastName = parts.slice(1).join(' ') || '';
     }
 
     if (data.email && data.email !== currentUser.email) {
@@ -65,7 +68,8 @@ export class UsersService {
       data: updateData,
     });
 
-    const { id, email, name, role, whatsappNumber } = updated;
-    return { message: 'Perfil actualizado', user: { id, email, name, role, whatsappNumber } };
+    const { id, email, firstName, lastName, role, whatsappNumber } = updated;
+    const fullName = `${firstName} ${lastName || ''}`.trim();
+    return { message: 'Perfil actualizado', user: { id, email, name: fullName, role, whatsappNumber } };
   }
 }

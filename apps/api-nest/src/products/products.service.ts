@@ -66,6 +66,7 @@ export class ProductsService {
         variants: {
           include: {
             size: true,
+            color: true,
           },
         },
         images: true,
@@ -77,7 +78,13 @@ export class ProductsService {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    return product;
+    return {
+      ...product,
+      variants: product.variants.map((v) => ({
+        ...v,
+        color: v.color?.name || '',
+      })),
+    };
   }
 }
 

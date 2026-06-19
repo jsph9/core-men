@@ -5,7 +5,7 @@ import { UpdateMerchantProfileDto } from './dto/merchant.dto';
 import { RespondQuoteDto, MarkUnfeasibleDto } from '../quotes/dto/quotes.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role, QuoteStatus } from '@prisma/client';
+import { Role, QuoteMacroStatus } from '@prisma/client';
 
 @Controller('merchant')
 @UseGuards(RolesGuard)
@@ -24,7 +24,7 @@ export class MerchantController {
 
   @Get('quotes')
   @Roles(Role.MERCHANT)
-  async getMerchantQuotes(@Query('status') status?: QuoteStatus) {
+  async getMerchantQuotes(@Query('status') status?: QuoteMacroStatus) {
     return this.quotesService.getMerchantQuotes(status);
   }
 
