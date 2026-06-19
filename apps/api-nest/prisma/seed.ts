@@ -298,7 +298,7 @@ async function main() {
   // Cotización 1.2 (Inviable)
   await prisma.quote.create({
     data: {
-      clientId: client1.id, totalQuantity: 2, message: 'Quiero 2 casacas bordadas con mi nombre.', isVisited: true, viabilityStatus: ViabilityStatus.NONVIABLE, clientFormalizationStatus: ClientFormalizationStatus.REJECTED, customerResponseStatus: CustomerResponseStatus.REJECTED, status: QuoteMacroStatus.CANCELLED, unfeasibleReason: 'El bordado requiere un mínimo de 12 unidades por el costo de matriz.',
+      clientId: client1.id, totalQuantity: 2, message: 'Quiero 2 casacas bordadas con mi nombre.', isVisited: true, viabilityStatus: ViabilityStatus.NONVIABLE, clientFormalizationStatus: ClientFormalizationStatus.REJECTED, customerResponseStatus: CustomerResponseStatus.REJECTED, status: QuoteMacroStatus.CANCELLED, unfeasibleReason: 'El bordado requiere un mínimo de 12 unidades por el costo de matriz.', estimatedPrice: 150.00,
       items: { create: [{ productVariantId: await getVariant('Casaca Bomber', 'Verde Militar', 'L'), quantity: 2 }] },
       designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/bomber.png', logoUrl: '/name.png', positionX: 30, positionY: 30, width: 8, height: 4, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'PENDING', changedBy: client1.id }, { changedField: 'VIABILITY', oldValue: 'PENDING', newValue: 'NONVIABLE', changedBy: merchant.id }, { changedField: 'FORMALIZATION', oldValue: 'PENDING', newValue: 'REJECTED', changedBy: 'Sistema' }, { changedField: 'STATUS', oldValue: 'PENDING', newValue: 'CANCELLED', changedBy: 'Sistema' }]}
