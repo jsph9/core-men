@@ -26,7 +26,7 @@ export default function CotizacionesComerciante() {
   
   // 2. Estados para la Paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(8);
 
   // 3. Consulta de Cotizaciones (Base de datos)
   const { data: quotes = [], isLoading } = useQuery<any>({ 
@@ -52,7 +52,7 @@ export default function CotizacionesComerciante() {
   // 5. Cálculos fijos para los KPIs superiores (Datos globales históricos)
   const pendingCount = quotes.filter((q: any) => q.status === "PENDING").length;
   const quotedCount = quotes.filter((q: any) => q.status === "QUOTED").length;
-  const totalValue = quotes.reduce((acc: number, q: any) => acc + (Number(q.quotedPrice) || 0), 0);
+  const totalValue = quotes.reduce((acc: number, q: any) => acc + (Number(q.estimatedPrice) || 0), 0);
 
   // 6. Lógica de Filtrado en Tiempo Real (Frontend)
   const filteredQuotes = useMemo(() => {
@@ -298,7 +298,7 @@ export default function CotizacionesComerciante() {
                         {getStatusBadge(quote.status)}
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        {quote.quotedPrice ? <span className="font-semibold text-slate-900">S/ {Number(quote.quotedPrice).toFixed(2)}</span> : "Por definir"}
+                        {quote.estimatedPrice ? <span className="font-semibold text-slate-900">S/ {Number(quote.estimatedPrice).toFixed(2)}</span> : "Por definir"}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {/* Enlace dinámico con el icono del Ojo */}
@@ -362,8 +362,15 @@ export default function CotizacionesComerciante() {
           <div className="flex items-center gap-2">
             <span>Filas por página:</span>
             <div className="relative">
-              <select disabled className="appearance-none bg-slate-100 border border-slate-200 text-slate-500 text-sm rounded focus:outline-none py-1 pl-2 pr-6 cursor-not-allowed">
-                <option>{itemsPerPage}</option>
+              <select 
+                value={itemsPerPage}
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                className="appearance-none bg-white border border-slate-200 text-slate-700 text-sm rounded focus:outline-none py-1 pl-2 pr-6 outline-none"
+              >
+                <option value={5}>5</option>
+                <option value={8}>8</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
               </select>
               <ChevronDown className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
             </div>
