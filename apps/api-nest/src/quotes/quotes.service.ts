@@ -197,9 +197,63 @@ export class QuotesService {
 
   async respondToQuote(merchantId: string, id: string, data: RespondQuoteDto) {
     const quote = await this.prisma.quote.findUnique({ where: { id } });
-    if (!quote || (quote.status !== QuoteMacroStatus.PENDING && quote.status !== QuoteMacroStatus.CANCELLED)) {
+    if (
+      !quote || 
+      (quote.status !== QuoteMacroStatus.PENDING && 
+       quote.status !== QuoteMacroStatus.CANCELLED && 
+       quote.status !== QuoteMacroStatus.IN_REVIEW)
+    ) {
       throw new BadRequestException('Cotización no válida para ser respondida');
     }
+
+    let totalQuantity = quote.totalQuantity;
+
+    // Actualizamos items y diseños dentro de una transacción
+    await this.prisma.$transaction(async (tx) => {
+      if (data.items) {
+        // Borrar items existentes
+        await tx.quoteItem.deleteMany({ where: { quoteId: id } });
+
+        // Crear nuevos items
+        if (data.items.length > 0) {
+          await tx.quoteItem.createMany({
+            data: data.items.map((item) => ({
+              quoteId: id,
+              productVariantId: item.productVariantId,
+              quantity: item.quantity,
+            })),
+          });
+        }
+
+        // Recalcular cantidad total
+        totalQuantity = data.items.reduce((acc, item) => acc + item.quantity, 0);
+      }
+
+      if (data.designs) {
+        // Borrar diseños existentes
+        await tx.design.deleteMany({ where: { quoteId: id } });
+
+        // Crear nuevos diseños
+        if (data.designs.length > 0) {
+          await tx.design.createMany({
+            data: data.designs.map((d) => ({
+              quoteId: id,
+              placement: d.placement,
+              techniqueId: d.techniqueId,
+              baseGarmentUrl: d.baseGarmentUrl,
+              logoUrl: d.logoUrl,
+              positionX: d.positionX,
+              positionY: d.positionY,
+              width: d.width,
+              height: d.height,
+              rotation: d.rotation,
+              canvasWidth: d.canvasWidth,
+              canvasHeight: d.canvasHeight,
+            })),
+          });
+        }
+      }
+    });
 
     await this.prisma.quote.update({
       where: { id },
@@ -207,13 +261,14 @@ export class QuotesService {
         status: QuoteMacroStatus.IN_REVIEW,
         estimatedPrice: data.quotedPrice,
         merchantMessage: data.merchantMessage,
+        totalQuantity,
         statusHistory: {
           create: {
             changedField: 'STATUS',
             oldValue: quote.status,
             newValue: 'IN_REVIEW',
             changedBy: merchantId,
-            note: 'Comerciante respondió con un precio',
+            note: 'Comerciante respondió y actualizó cotización con precio',
           },
         },
       },

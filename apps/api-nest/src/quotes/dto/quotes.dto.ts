@@ -75,7 +75,20 @@ export class RespondQuoteDto {
   @IsOptional()
   @IsString()
   merchantMessage?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => QuoteItemDto)
+  items?: QuoteItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DesignDto)
+  designs?: DesignDto[];
 }
+
 
 export class MarkUnfeasibleDto {
   @IsString()
