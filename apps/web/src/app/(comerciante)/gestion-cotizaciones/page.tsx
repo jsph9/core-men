@@ -15,14 +15,17 @@ import {
   Shirt,
   ChevronLeft,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Brush
 } from "lucide-react";
 
 export default function CotizacionesComerciante() {
   // 1. Estados para los Filtros
   const [statusFilter, setStatusFilter] = useState("Todos");
-  const [dateFilter, setDateFilter] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
   const [garmentFilter, setGarmentFilter] = useState("Todos");
+  const [clientSearchFilter, setClientSearchFilter] = useState("");
   
   // 2. Estados para la Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,11 +37,40 @@ export default function CotizacionesComerciante() {
     queryFn: () => apiGet("/api/merchant/quotes") 
   });
 
+  // Regla de Negocio: Cotizaciones en negociación (PENDING, IN_REVIEW, CANCELLED sin formalizar)
+  // Ordenado por estado (Nuevo/PENDING -> En Revisión/IN_REVIEW -> Cancelado/CANCELLED)
+  // Y luego por fecha decreciente (más reciente primero)
+  const negociacionesQuotes = useMemo(() => {
+    const statusOrder: Record<string, number> = {
+      PENDING: 1,
+      IN_REVIEW: 2,
+      CANCELLED: 3,
+    };
+
+    return quotes
+      .filter((q: any) => {
+        const isPending = q.status === "PENDING";
+        const isInReview = q.status === "IN_REVIEW";
+        const isCancelledNegotiation = q.status === "CANCELLED" && q.clientFormalizationStatus !== "CONFIRMED";
+        return isPending || isInReview || isCancelledNegotiation;
+      })
+      .sort((a: any, b: any) => {
+        const orderA = statusOrder[a.status] || 99;
+        const orderB = statusOrder[b.status] || 99;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        const timeA = new Date(a.createdAt).getTime();
+        const timeB = new Date(b.createdAt).getTime();
+        return timeB - timeA;
+      });
+  }, [quotes]);
+
   // 4. Extracción dinámica de Tipos de Prenda únicos de la BD para el menú desplegable
   const uniqueGarmentTypes = useMemo(() => {
-    if (!quotes || quotes.length === 0) return [];
+    if (!negociacionesQuotes || negociacionesQuotes.length === 0) return [];
     const typesSet = new Set<string>();
-    quotes.forEach((q: any) => {
+    negociacionesQuotes.forEach((q: any) => {
       if (q.items) {
         q.items.forEach((item: any) => {
           const catName = item.productVariant?.product?.category?.name;
@@ -47,37 +79,86 @@ export default function CotizacionesComerciante() {
       }
     });
     return Array.from(typesSet) as string[];
-  }, [quotes]);
+  }, [negociacionesQuotes]);
 
   // 5. Cálculos fijos para los KPIs superiores (Datos globales históricos)
-  const pendingCount = quotes.filter((q: any) => q.status === "PENDING").length;
-  const quotedCount = quotes.filter((q: any) => q.status === "QUOTED").length;
-  const totalValue = quotes.reduce((acc: number, q: any) => acc + (Number(q.estimatedPrice) || 0), 0);
+  const pendingCount = negociacionesQuotes.filter((q: any) => q.status === "PENDING").length;
+  const quotedCount = negociacionesQuotes.filter((q: any) => q.status === "IN_REVIEW").length;
+  
+  // Cotizaciones activas (excluyendo canceladas)
+  const activeNegociaciones = useMemo(() => {
+    return negociacionesQuotes.filter((q: any) => q.status === "PENDING" || q.status === "IN_REVIEW");
+  }, [negociacionesQuotes]);
+
+  // Mayor Valor de Cotización (Card 3)
+  const maxQuoteValue = useMemo(() => {
+    if (activeNegociaciones.length === 0) return 0;
+    return Math.max(...activeNegociaciones.map((q: any) => Number(q.estimatedPrice) || 0));
+  }, [activeNegociaciones]);
+
+  // ID de la Cotización con Mayor Valor (para Card 3 clickeable)
+  const maxQuoteId = useMemo(() => {
+    if (activeNegociaciones.length === 0) return null;
+    let maxQuote = activeNegociaciones[0];
+    let maxVal = Number(maxQuote.estimatedPrice) || 0;
+    
+    for (let i = 1; i < activeNegociaciones.length; i++) {
+      const val = Number(activeNegociaciones[i].estimatedPrice) || 0;
+      if (val > maxVal) {
+        maxVal = val;
+        maxQuote = activeNegociaciones[i];
+      }
+    }
+    return maxQuote.id;
+  }, [activeNegociaciones]);
+
+  // Suma de Valores de Cotización (Card 4)
+  const sumQuoteValue = useMemo(() => {
+    return activeNegociaciones.reduce((acc: number, q: any) => acc + (Number(q.estimatedPrice) || 0), 0);
+  }, [activeNegociaciones]);
 
   // 6. Lógica de Filtrado en Tiempo Real (Frontend)
   const filteredQuotes = useMemo(() => {
-    return quotes.filter((quote: any) => {
+    return negociacionesQuotes.filter((quote: any) => {
       // Filtro de Estado
       let matchesStatus = true;
       if (statusFilter === "PENDING") matchesStatus = quote.status === "PENDING";
-      if (statusFilter === "QUOTED") matchesStatus = quote.status === "QUOTED";
-      if (statusFilter === "APPROVED") matchesStatus = quote.status === "APPROVED";
+      if (statusFilter === "IN_REVIEW") matchesStatus = quote.status === "IN_REVIEW";
+      if (statusFilter === "CANCELLED") matchesStatus = quote.status === "CANCELLED";
 
       // Filtro de Tipo de Prenda
       const garmentNames = quote.items?.map((item: any) => item.productVariant?.product?.category?.name) || [];
       const matchesGarment = garmentFilter === "Todos" || garmentNames.includes(garmentFilter);
 
-      // Filtro de Fecha (Año-Mes)
-      let matchesDate = true;
-      if (dateFilter) {
+      // Filtro de Rango de Fecha (Inicio y Fin del día)
+      let matchesDateRange = true;
+      if (startDateFilter || endDateFilter) {
         const quoteDate = new Date(quote.createdAt);
-        const [year, month] = dateFilter.split("-");
-        matchesDate = quoteDate.getFullYear() === parseInt(year) && (quoteDate.getMonth() + 1) === parseInt(month);
+        quoteDate.setHours(0, 0, 0, 0);
+
+        if (startDateFilter) {
+          const start = new Date(startDateFilter + "T00:00:00");
+          if (quoteDate < start) matchesDateRange = false;
+        }
+        if (endDateFilter) {
+          const end = new Date(endDateFilter + "T00:00:00");
+          if (quoteDate > end) matchesDateRange = false;
+        }
       }
 
-      return matchesStatus && matchesGarment && matchesDate;
+      // Filtro de Cliente (Nombre Completo o Razón Social)
+      let matchesClient = true;
+      if (clientSearchFilter.trim()) {
+        const searchVal = clientSearchFilter.toLowerCase();
+        const client = quote.client;
+        const fullName = `${client?.firstName || ""} ${client?.lastName || ""} ${client?.maternalLastName || ""}`.toLowerCase();
+        const businessName = (client?.businessName || "").toLowerCase();
+        matchesClient = fullName.includes(searchVal) || businessName.includes(searchVal);
+      }
+
+      return matchesStatus && matchesGarment && matchesDateRange && matchesClient;
     });
-  }, [quotes, statusFilter, garmentFilter, dateFilter]);
+  }, [negociacionesQuotes, statusFilter, garmentFilter, startDateFilter, endDateFilter, clientSearchFilter]);
 
   // 7. Lógica de Paginación Dinámica (Máximo 8 por página)
   const totalPages = Math.ceil(filteredQuotes.length / itemsPerPage) || 1;
@@ -86,42 +167,51 @@ export default function CotizacionesComerciante() {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredQuotes.slice(startIndex, endIndex);
-  }, [filteredQuotes, currentPage]);
+  }, [filteredQuotes, currentPage, itemsPerPage]);
 
   // Función para resetear todos los filtros de golpe
   const handleClearFilters = () => {
     setStatusFilter("Todos");
-    setDateFilter("");
+    setStartDateFilter("");
+    setEndDateFilter("");
     setGarmentFilter("Todos");
+    setClientSearchFilter("");
     setCurrentPage(1);
   };
 
   const formatDateString = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
-    return new Date(dateString).toLocaleDateString('es-ES', options).replace('.', ',');
+    const options: Intl.DateTimeFormatOptions = { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    };
+    return new Date(dateString).toLocaleString('es-ES', options).replace('.', ',');
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
         return (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-medium">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-            En negociación
-          </div>
-        );
-      case "QUOTED":
-        return (
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
             <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-            Pendiente de formalización
+            Nuevo
           </div>
         );
-      case "APPROVED":
+      case "IN_REVIEW":
         return (
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-            Aprobado
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+            En Revisión
+          </div>
+        );
+      case "CANCELLED":
+        return (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-medium">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+            Cancelado
           </div>
         );
       default:
@@ -147,76 +237,90 @@ export default function CotizacionesComerciante() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <p className="text-sm text-slate-500 font-medium">En Negociación</p>
+          <p className="text-sm text-slate-500 font-medium">Nuevo</p>
           <div className="flex items-end justify-between mt-2">
-            <h3 className="text-3xl font-bold text-orange-600">{pendingCount}</h3>
-            <TrendingUp className="h-6 w-6 text-orange-300" strokeWidth={2.5} />
+            <h3 className="text-3xl font-bold text-blue-600">{pendingCount}</h3>
+            <TrendingUp className="h-6 w-6 text-blue-300" strokeWidth={2.5} />
           </div>
         </div>
         
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <p className="text-sm text-slate-500 font-medium">Pendientes Formalizar</p>
+          <p className="text-sm text-slate-500 font-medium">En Revisión</p>
           <div className="flex items-end justify-between mt-2">
-            <h3 className="text-3xl font-bold text-blue-500">{quotedCount}</h3>
-            <FileText className="h-6 w-6 text-blue-300" strokeWidth={2.5} />
+            <h3 className="text-3xl font-bold text-amber-600">{quotedCount}</h3>
+            <FileText className="h-6 w-6 text-amber-300" strokeWidth={2.5} />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
-          <p className="text-sm text-slate-500 font-medium">Tiempo Promedio</p>
-          <div className="flex items-end justify-between mt-2">
-            <h3 className="text-3xl font-bold text-[#0F172A]">2.4 Días</h3>
-            <Clock className="h-6 w-6 text-slate-300" strokeWidth={2.5} />
+        {maxQuoteId ? (
+          <Link 
+            href={`/gestion-cotizaciones/${maxQuoteId}`}
+            className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group"
+          >
+            <p className="text-sm text-slate-500 font-medium group-hover:text-blue-600 transition-colors">Mayor Cotización</p>
+            <div className="flex items-end justify-between mt-2">
+              <h3 className="text-3xl font-bold text-[#0F172A]">S/ {maxQuoteValue.toLocaleString('es-PE')}</h3>
+              <TrendingUp className="h-6 w-6 text-slate-300 group-hover:text-blue-600 transition-colors" strokeWidth={2.5} />
+            </div>
+          </Link>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+            <p className="text-sm text-slate-500 font-medium">Mayor Cotización</p>
+            <div className="flex items-end justify-between mt-2">
+              <h3 className="text-3xl font-bold text-[#0F172A]">S/ 0.00</h3>
+              <TrendingUp className="h-6 w-6 text-slate-300" strokeWidth={2.5} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
           <p className="text-sm text-slate-500 font-medium">Valor en Negociación</p>
           <div className="flex items-end justify-between mt-2">
-            <h3 className="text-3xl font-bold text-emerald-500">S/ {totalValue.toLocaleString('es-PE')}</h3>
+            <h3 className="text-3xl font-bold text-emerald-500">S/ {sumQuoteValue.toLocaleString('es-PE')}</h3>
             <Banknote className="h-6 w-6 text-emerald-300" strokeWidth={2.5} />
           </div>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-end">
-        <div className="w-full md:w-1/4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm mb-6 grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+        <div className="sm:col-span-12 md:col-span-3">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Cliente</label>
+          <Input 
+            type="text" 
+            placeholder="Buscar cliente..."
+            className="text-sm h-[42px]" 
+            value={clientSearchFilter}
+            onChange={(e) => { setClientSearchFilter(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+
+        <div className="sm:col-span-6 md:col-span-2">
           <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Estado</label>
           <div className="relative">
             <select 
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 outline-none"
+              className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 h-[42px] outline-none"
             >
-              <option value="Todos">Todos los estados</option>
-              <option value="PENDING">En negociación</option>
-              <option value="QUOTED">Pendiente de formalización</option>
-              <option value="APPROVED">Aprobado</option>
+              <option value="Todos">Todos</option>
+              <option value="PENDING">Nuevo</option>
+              <option value="IN_REVIEW">En Revisión</option>
+              <option value="CANCELLED">Cancelado</option>
             </select>
             <ChevronDown className="absolute right-2.5 top-3 h-4 w-4 text-slate-500 pointer-events-none" />
           </div>
         </div>
 
-        <div className="w-full md:w-1/4">
-          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Rango de Fecha</label>
-          <Input 
-            type="month" 
-            className="text-sm h-[42px]" 
-            value={dateFilter}
-            onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
-          />
-        </div>
-
-        <div className="w-full md:w-1/4">
-          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Tipo de Prenda</label>
+        <div className="sm:col-span-6 md:col-span-2">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Prenda</label>
           <div className="relative">
             <select 
               value={garmentFilter}
               onChange={(e) => { setGarmentFilter(e.target.value); setCurrentPage(1); }}
-              className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 outline-none"
+              className="w-full appearance-none bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 pr-8 h-[42px] outline-none"
             >
-              <option key="Todos" value="Todos">Cualquier prenda</option>
+              <option key="Todos" value="Todos">Todos</option>
               {uniqueGarmentTypes.map((type: string) => (
                 <option key={type} value={type}>{type}</option>
               ))}
@@ -225,13 +329,34 @@ export default function CotizacionesComerciante() {
           </div>
         </div>
 
-        <div className="w-full md:w-auto ml-auto">
+        <div className="sm:col-span-6 md:col-span-2">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Desde</label>
+          <Input 
+            type="date" 
+            className="text-sm h-[42px]" 
+            value={startDateFilter}
+            onChange={(e) => { setStartDateFilter(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+
+        <div className="sm:col-span-6 md:col-span-2">
+          <label className="text-xs font-semibold text-slate-700 mb-1.5 block">Hasta</label>
+          <Input 
+            type="date" 
+            className="text-sm h-[42px]" 
+            value={endDateFilter}
+            onChange={(e) => { setEndDateFilter(e.target.value); setCurrentPage(1); }}
+          />
+        </div>
+
+        <div className="sm:col-span-12 md:col-span-1">
           <Button 
             variant="outline" 
             onClick={handleClearFilters}
-            className="w-full md:w-auto flex items-center gap-2 h-[42px] border-slate-300 text-slate-700"
+            className="w-full flex items-center justify-center h-[42px] bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 transition-colors"
+            title="Limpiar filtros"
           >
-            <Filter className="h-4 w-4" /> Limpiar
+            <Brush className="h-5 w-5" />
           </Button>
         </div>
       </div>

@@ -30,8 +30,8 @@ export class MerchantController {
 
   @Get('quotes/:id')
   @Roles(Role.MERCHANT)
-  async getMerchantQuoteById(@Param('id') id: string) {
-    return this.quotesService.getMerchantQuoteById(id);
+  async getMerchantQuoteById(@Req() req: any, @Param('id') id: string) {
+    return this.quotesService.getMerchantQuoteById(id, req.user.userId);
   }
 
   @Patch('quotes/:id/respond')

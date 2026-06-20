@@ -126,7 +126,7 @@ export class QuotesService {
     });
   }
 
-  async getMerchantQuoteById(id: string) {
+  async getMerchantQuoteById(id: string, merchantId?: string): Promise<any> {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
       include: {
@@ -169,6 +169,29 @@ export class QuotesService {
     });
 
     if (!quote) throw new NotFoundException('Cotización no encontrada');
+
+    if (quote.status === QuoteMacroStatus.PENDING && merchantId) {
+      await this.prisma.quote.update({
+        where: { id },
+        data: {
+          status: QuoteMacroStatus.IN_REVIEW,
+          isVisited: true,
+          statusHistory: {
+            create: {
+              changedField: 'STATUS',
+              oldValue: QuoteMacroStatus.PENDING,
+              newValue: QuoteMacroStatus.IN_REVIEW,
+              changedBy: merchantId,
+              note: '',
+            },
+          },
+        },
+      });
+
+      // Recargar con los nuevos estados e historial
+      return this.getMerchantQuoteById(id);
+    }
+
     return quote;
   }
 

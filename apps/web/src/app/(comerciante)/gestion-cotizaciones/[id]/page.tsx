@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiGet, apiPatch } from "@/lib/api";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import {
   MessageSquare, 
   Eye,
   ChevronLeft,
+  X,
   XCircle,
   CheckCircle,
   ExternalLink,
@@ -27,6 +28,203 @@ import {
   ClipboardCheck
 } from "lucide-react";
 
+const translateViabilityStatus = (status?: string) => {
+  if (!status) return "Pendiente";
+  switch (status) {
+    case "PENDING": return "En progreso";
+    case "VIABLE": return "Viable";
+    case "NONVIABLE": return "Inviable";
+    case "EXPIRED": return "Expirado";
+    default: return "En progreso";
+  }
+};
+
+const translateCustomerResponseStatus = (status?: string) => {
+  if (!status) return "En progreso";
+  switch (status) {
+    case "PENDING": return "En progreso";
+    case "CONFIRMED": return "Confirmado";
+    case "REJECTED": return "Rechazado";
+    case "UPDATED": return "Actualizado";
+    case "IN_NEGOTIATION": return "En negociación";
+    case "EXPIRED": return "Expirado";
+    default: return "En progreso";
+  }
+};
+
+const translateClientFormalizationStatus = (status?: string) => {
+  if (!status) return "Pendiente";
+  switch (status) {
+    case "PENDING": return "En progreso";
+    case "CONFIRMED": return "Confirmado";
+    case "REJECTED": return "Rechazado";
+    case "EXPIRED": return "Expirado";
+    default: return "En progreso";
+  }
+};
+
+const translatePlacement = (placement: string) => {
+  switch (placement) {
+    case "FRONT": return "Frontal";
+    case "BACK": return "Espalda";
+    case "RIGHTSLEEVE": return "Manga Derecha";
+    case "LEFTSLEEVE": return "Manga Izquierda";
+    default: return placement;
+  }
+};
+
+const getTechniqueBadgeClass = (name: string) => {
+  switch (name?.toUpperCase()) {
+    case "BORDADO": return "bg-blue-100 text-blue-700 border border-blue-200";
+    case "SUBLIMADO": return "bg-orange-100 text-orange-700 border border-orange-200";
+    case "SERIGRAFÍA": return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+    case "DTF": return "bg-purple-100 text-purple-700 border border-purple-200";
+    default: return "bg-slate-100 text-slate-700 border border-slate-200";
+  }
+};
+
+const getActiveStepIndex = (quote: any): number => {
+  if (!quote) return 0;
+  if (!quote.isVisited && quote.status === "PENDING") {
+    return 0; // Visitado is active
+  }
+  if (quote.status === "CANCELLED") {
+    // If it's cancelled, find where it was cancelled
+    if (quote.viabilityStatus === "EXPIRED") {
+      return 1; // Cancelled at step 2 (Expired)
+    }
+    if (quote.customerResponseStatus === "REJECTED" || quote.customerResponseStatus === "EXPIRED") {
+      return 2; // Cancelled at step 3
+    }
+    if (quote.clientFormalizationStatus === "REJECTED" || quote.clientFormalizationStatus === "EXPIRED") {
+      return 3; // Cancelled at step 4
+    }
+    // If quote is cancelled but viability is PENDING
+    if (quote.viabilityStatus === "PENDING") {
+      return 1;
+    }
+    return 2; // Default fallback if cancelled but validation was done
+  }
+  if (quote.viabilityStatus === "PENDING") {
+    return 1; // Validación del Diseño is active
+  }
+  if (
+    quote.customerResponseStatus === "PENDING" ||
+    quote.customerResponseStatus === "IN_NEGOTIATION" ||
+    quote.customerResponseStatus === "UPDATED"
+  ) {
+    return 2; // Estado de la Cotización is active
+  }
+  if (quote.clientFormalizationStatus === "PENDING") {
+    return 3; // Confirmación de Cotización is active
+  }
+  return 4; // All steps completed
+};
+
+const getStepState = (idx: number, quote: any): "completed" | "current" | "cancelled" | "pending" => {
+  if (!quote) return "pending";
+
+  const activeStepIdx = getActiveStepIndex(quote);
+
+  if (idx > activeStepIdx) {
+    return "pending";
+  }
+
+  // Check if this specific step is cancelled/rejected
+  if (idx === 1 && quote.viabilityStatus === "EXPIRED") {
+    return "cancelled";
+  }
+  if (idx === 2 && (quote.customerResponseStatus === "REJECTED" || quote.customerResponseStatus === "EXPIRED")) {
+    return "cancelled";
+  }
+  if (idx === 3 && (quote.clientFormalizationStatus === "REJECTED" || quote.clientFormalizationStatus === "EXPIRED")) {
+    return "cancelled";
+  }
+  
+  if (quote.status === "CANCELLED" && idx === activeStepIdx) {
+    if (idx === 1 && quote.viabilityStatus === "PENDING") {
+      return "cancelled";
+    }
+    if (idx !== 1) {
+      return "cancelled";
+    }
+  }
+
+  if (idx < activeStepIdx) {
+    return "completed";
+  }
+
+  return "current";
+};
+
+const getStepDetails = (idx: number, quote: any) => {
+  const state = getStepState(idx, quote);
+  
+  let statusText = "Pendiente";
+  let historyDate = "";
+
+  if (state === "pending") {
+    statusText = "Pendiente";
+  } else {
+    if (idx === 0) {
+      historyDate = getHistoryDate(quote, "STATUS", "IN_REVIEW");
+      statusText = "Visitado";
+    } else if (idx === 1) {
+      statusText = translateViabilityStatus(quote?.viabilityStatus);
+      historyDate = getHistoryDate(quote, "VIABILITY");
+    } else if (idx === 2) {
+      statusText = translateCustomerResponseStatus(quote?.customerResponseStatus);
+      historyDate = getHistoryDate(quote, "CUSTOMER_RESPONSE");
+    } else if (idx === 3) {
+      statusText = translateClientFormalizationStatus(quote?.clientFormalizationStatus);
+      historyDate = getHistoryDate(quote, "FORMALIZATION");
+    }
+  }
+
+  let statusTextColor = "text-slate-400";
+  if (state === "completed") {
+    statusTextColor = "text-emerald-600 font-semibold";
+  } else if (state === "current") {
+    statusTextColor = "text-amber-600 font-semibold";
+  } else if (state === "cancelled") {
+    statusTextColor = "text-red-600 font-semibold";
+  }
+
+  return {
+    state,
+    statusText,
+    statusTextColor,
+    historyDate,
+  };
+};
+
+const getLineColorClass = (stepState: "completed" | "current" | "cancelled" | "pending") => {
+  switch (stepState) {
+    case "completed": return "bg-emerald-500";
+    case "current": return "bg-amber-500";
+    case "cancelled": return "bg-red-500";
+    case "pending": default: return "bg-slate-200";
+  }
+};
+
+const getHistoryDate = (quote: any, changedField: string, newValue?: string) => {
+  if (!quote) return "";
+  if (quote.statusHistory && Array.isArray(quote.statusHistory)) {
+    const log = quote.statusHistory.find((h: any) => {
+      if (h.changedField !== changedField) return false;
+      if (newValue && h.newValue !== newValue) return false;
+      return true;
+    });
+    if (log) return log.createdAt;
+  }
+  
+  // Fallbacks
+  if (changedField === "STATUS" && newValue === "IN_REVIEW" && quote.isVisited) {
+    return quote.createdAt;
+  }
+  return "";
+};
+
 const formatStepperDate = (dateString: string) => {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -37,29 +235,104 @@ const formatStepperDate = (dateString: string) => {
   return `${day}/${month} - ${hours}:${minutes}`;
 };
 
-const getActiveStep = (status: string): number => {
-  switch (status) {
-    case "PENDING":
-      return 1;
-    case "QUOTED":
-    case "IN_REVIEW":
-      return 2;
-    case "APPROVED":
-    case "REJECTED":
-    case "UNFEASIBLE":
-    case "CANCELLED":
-    case "WAITING_PAYMENT":
-      return 3;
+const getBottomButtons = (quote: any) => {
+  if (!quote) return [];
+
+  const viability = quote.viabilityStatus;
+  const customerResponse = quote.customerResponseStatus;
+  const isExpired = viability === "EXPIRED";
+
+  // Case 1: viabilityStatus is PENDING or EXPIRED
+  if ((quote.isVisited && viability === "PENDING") || viability === "EXPIRED") {
+    return [
+      {
+        label: "Inviable",
+        variant: isExpired ? "grey" : "red",
+        disabled: isExpired,
+        action: "INVIABLE"
+      },
+      {
+        label: "Viable",
+        variant: isExpired ? "grey" : "green",
+        disabled: isExpired,
+        action: "VIABLE"
+      }
+    ];
+  }
+
+  // Determine what button set was active before/during finalization
+  // Finalized states: CONFIRMED, REJECTED, UPDATED, EXPIRED
+  const isFinalized = ["CONFIRMED", "REJECTED", "UPDATED", "EXPIRED"].includes(customerResponse) || quote.status === "CANCELLED";
+
+  // Did it go through negotiation?
+  const wasInNegotiation = customerResponse === "IN_NEGOTIATION" || 
+    (quote.statusHistory && Array.isArray(quote.statusHistory) && quote.statusHistory.some((h: any) => h.newValue === "IN_NEGOTIATION"));
+
+  if (isFinalized) {
+    if (wasInNegotiation) {
+      return [
+        { label: "Rechazar", variant: "grey", disabled: true, action: "RECHAZAR" },
+        { label: "Actualizar Información", variant: "grey", disabled: true, action: "ACTUALIZAR" },
+        { label: "Negociación Externa", variant: "grey", disabled: true, action: "WHATSAPP" }
+      ];
+    } else if (viability === "VIABLE") {
+      return [
+        { label: "Rechazar", variant: "grey", disabled: true, action: "RECHAZAR" },
+        { label: "Aceptar", variant: "grey", disabled: true, action: "ACEPTAR" }
+      ];
+    } else {
+      return [
+        { label: "Rechazar", variant: "grey", disabled: true, action: "RECHAZAR" },
+        { label: "Negociación Externa", variant: "grey", disabled: true, action: "WHATSAPP" }
+      ];
+    }
+  }
+
+  // Active states
+  if (customerResponse === "IN_NEGOTIATION") {
+    return [
+      { label: "Rechazar", variant: "red", disabled: false, action: "RECHAZAR" },
+      { label: "Actualizar Información", variant: "white", disabled: false, action: "ACTUALIZAR" },
+      { label: "Negociación Externa", variant: "white", disabled: false, action: "WHATSAPP" }
+    ];
+  }
+
+  if (viability === "VIABLE" && customerResponse === "PENDING") {
+    return [
+      { label: "Rechazar", variant: "red", disabled: false, action: "RECHAZAR" },
+      { label: "Aceptar", variant: "green", disabled: false, action: "ACEPTAR" }
+    ];
+  }
+
+  if (viability === "NONVIABLE" && customerResponse === "PENDING") {
+    return [
+      { label: "Rechazar", variant: "red", disabled: false, action: "RECHAZAR" },
+      { label: "Negociación Externa", variant: "white", disabled: false, action: "WHATSAPP" }
+    ];
+  }
+
+  return [];
+};
+
+const getButtonClass = (variant: string) => {
+  switch (variant) {
+    case "red":
+      return "bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-sm transition-colors";
+    case "green":
+      return "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500 shadow-sm transition-colors";
+    case "white":
+      return "bg-white border-slate-300 text-slate-700 hover:bg-slate-50 font-medium shadow-sm transition-colors";
+    case "grey":
     default:
-      return 0;
+      return "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed shadow-none";
   }
 };
 
 const stepperSteps = [
-  { label: "No Visitado", icon: Eye },
-  { label: "Revisado", icon: Search },
-  { label: "Viabilidad", icon: Scale },
-  { label: "Estado Cotización", icon: ClipboardCheck },
+  { label: "Visitado", icon: Eye },
+  { label: "Validación del Diseño", icon: Scale },
+  { label: "Estado de la Cotización", icon: ClipboardCheck },
+  { label: "Confirmación de Cotización", icon: Handshake },
 ];
 
 export default function DetalleCotizacion() {
@@ -67,21 +340,33 @@ export default function DetalleCotizacion() {
   const pathParams = useParams();
   const id = pathParams?.id as string;
   
-  const [activeModal, setActiveModal] = useState<"RECHAZAR" | "ACEPTAR" | "WHATSAPP" | null>(null);
+  const [activeModal, setActiveModal] = useState<"RECHAZAR" | "ACEPTAR" | "WHATSAPP" | "VIABLE" | "INVIABLE" | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [unfeasibleReason, setUnfeasibleReason] = useState("");
   const [proposalPrice, setProposalPrice] = useState("");
+  const [proposalEstimatedDays, setProposalEstimatedDays] = useState("");
   const [proposalMessage, setProposalMessage] = useState("");
 
   const { data: quote, isLoading } = useQuery<any>({
     queryKey: ["quote-detail", id],
     queryFn: async () => {
       if (!id) return null;
-      const allQuotes = await apiGet("/api/merchant/quotes");
-      if (!Array.isArray(allQuotes)) return null;
-      return allQuotes.find((q: any) => String(q.id).trim() === String(id).trim()) || null;
+      return apiGet(`/api/merchant/quotes/${id}`);
     },
     enabled: !!id 
   });
+
+  const designPlacementsCount = useMemo(() => {
+    const counts = { FRONT: 0, BACK: 0, RIGHTSLEEVE: 0, LEFTSLEEVE: 0 };
+    if (!quote?.designs) return counts;
+    quote.designs.forEach((d: any) => {
+      const p = d.placement as keyof typeof counts;
+      if (counts[p] !== undefined) {
+        counts[p]++;
+      }
+    });
+    return counts;
+  }, [quote?.designs]);
 
   const respondQuote = useMutation({
     mutationFn: (data: { quotedPrice: number; merchantMessage?: string }) => 
@@ -109,17 +394,65 @@ export default function DetalleCotizacion() {
     }
   });
 
-  const mockMatrix = [
-    { id: 1, colorName: "Navy Blue", hex: "#1e3a8a", s: 25, m: 50, l: 50, xl: 25, total: 150 },
-    { id: 2, colorName: "Optic White", hex: "#f8fafc", s: 50, m: 100, l: 100, xl: 50, total: 300 },
-    { id: 3, colorName: "Heather Grey", hex: "#94a3b8", s: 10, m: 15, l: 15, xl: 10, total: 50 },
-  ];
+  // Procesamiento dinámico para la Matriz de Cantidades
+  const uniqueSizes = useMemo(() => {
+    if (!quote?.items) return [];
+    const sizesMap = new Map<string, { id: string; name: string; abbreviation: string }>();
+    quote.items.forEach((item: any) => {
+      const sz = item.productVariant?.size;
+      if (sz && !sizesMap.has(sz.id)) {
+        sizesMap.set(sz.id, sz);
+      }
+    });
+    const standardOrder = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+    return Array.from(sizesMap.values()).sort((a, b) => {
+      const idxA = standardOrder.indexOf(a.abbreviation);
+      const idxB = standardOrder.indexOf(b.abbreviation);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [quote?.items]);
 
-  const mockSpecs = [
-    { id: 1, element: "Logotipo Principal", spec: "80mm x 45mm", location: "Pecho Izquierdo", method: "Bordado 3D", methodColor: "bg-blue-100 text-blue-700" },
-    { id: 2, element: "Nombre Empleado", spec: "Tipografía Roboto", location: "Pecho Derecho", method: "Bordado Plano", methodColor: "bg-slate-200 text-slate-700" },
-    { id: 3, element: "Logo Secundario", spec: "40mm Circular", location: "Manga Derecha", method: "Sublimado", methodColor: "bg-orange-100 text-orange-700" },
-  ];
+  const uniqueColors = useMemo(() => {
+    if (!quote?.items) return [];
+    const colorsMap = new Map<string, { id: string; name: string; hex: string }>();
+    quote.items.forEach((item: any) => {
+      const col = item.productVariant?.color;
+      if (col && !colorsMap.has(col.id)) {
+        colorsMap.set(col.id, {
+          id: col.id,
+          name: col.name,
+          hex: col.hexCode, // Mapped from database schema hexCode
+        });
+      }
+    });
+    return Array.from(colorsMap.values());
+  }, [quote?.items]);
+
+  const getQuantity = (colorId: string, sizeId: string) => {
+    if (!quote?.items) return 0;
+    const found = quote.items.find(
+      (item: any) =>
+        item.productVariant?.colorId === colorId &&
+        item.productVariant?.sizeId === sizeId
+    );
+    return found ? found.quantity : 0;
+  };
+
+  const getColorTotal = (colorId: string) => {
+    return uniqueSizes.reduce((acc: number, size: any) => acc + getQuantity(colorId, size.id), 0);
+  };
+
+  const getSizeTotal = (sizeId: string) => {
+    return uniqueColors.reduce((acc: number, color: any) => acc + getQuantity(color.id, sizeId), 0);
+  };
+
+  const totalQuantity = useMemo(() => {
+    if (!quote?.items) return 0;
+    return quote.items.reduce((acc: number, item: any) => acc + item.quantity, 0);
+  }, [quote?.items]);
 
   // Controla qué vista se muestra en el cuadro grande
   const [selectedView, setSelectedView] = useState<"frontal" | "espalda" | "brazo_izq" | "brazo_der">("frontal");
@@ -198,7 +531,8 @@ export default function DetalleCotizacion() {
 
   const handleRejectSubmit = () => {
     if (!rejectReason.trim()) return;
-    markUnfeasible.mutate({ unfeasibleReason: rejectReason });
+    toast.success("Cotización rechazada (Acción simulada)");
+    setActiveModal(null);
   };
 
   const handleAcceptSubmit = () => {
@@ -252,70 +586,56 @@ export default function DetalleCotizacion() {
 
           {/* Stepper Timeline */}
           <div className="border-t border-slate-100 pt-6">
-            <div className="flex items-center w-full max-w-4xl mx-auto py-2">
+            <div className="flex items-start w-full max-w-4xl mx-auto py-2">
               {stepperSteps.map((step, idx) => {
-                const activeStep = getActiveStep(quote?.status);
-                const isCompleted = idx < activeStep;
-                const isActive = idx === activeStep;
-                const isPending = idx > activeStep;
+                const {
+                  state,
+                  statusText,
+                  statusTextColor,
+                  historyDate
+                } = getStepDetails(idx, quote);
                 const StepIcon = step.icon;
 
-                // Determinar el texto secundario dinámico
-                let secondaryText = "Pendiente";
-                let secondaryTextColor = "text-slate-400";
+                // Conector izquierdo (de idx-1 a idx)
+                // Color determinado por el estado del paso actual (idx)
+                const leftLineColor = getLineColorClass(state);
 
-                if (isCompleted) {
-                  if (idx === 0 && quote?.createdAt) {
-                    secondaryText = formatStepperDate(quote.createdAt);
-                  } else {
-                    secondaryText = "Completado";
-                  }
-                  secondaryTextColor = "text-slate-500";
-                } else if (isActive) {
-                  secondaryTextColor = "text-[#A0522D] font-semibold";
-                  if (quote?.status === "APPROVED" || quote?.status === "WAITING_PAYMENT") {
-                    secondaryText = "Aprobado";
-                    secondaryTextColor = "text-emerald-600 font-semibold";
-                  } else if (quote?.status === "REJECTED" || quote?.status === "CANCELLED") {
-                    secondaryText = "Rechazado";
-                    secondaryTextColor = "text-red-600 font-semibold";
-                  } else if (quote?.status === "UNFEASIBLE") {
-                    secondaryText = "No Viable";
-                    secondaryTextColor = "text-amber-600 font-semibold";
-                  } else {
-                    secondaryText = "En progreso...";
-                  }
-                }
+                // Conector derecho (de idx a idx+1)
+                // Color determinado por el estado del siguiente paso (idx+1)
+                const nextStepState = idx < stepperSteps.length - 1 ? getStepState(idx + 1, quote) : "pending";
+                const rightLineColor = getLineColorClass(nextStepState);
 
                 return (
                   <div key={idx} className="flex-1 flex flex-col items-center relative">
                     {/* Conector izquierdo */}
                     {idx > 0 && (
                       <div 
-                        className={`absolute left-0 right-1/2 top-6 h-[4px] -translate-y-1/2 z-0 transition-all duration-500 ${
-                          isCompleted || isActive ? "bg-[#A0522D]" : "bg-slate-200"
-                        }`}
+                        className={`absolute left-0 right-1/2 top-6 h-[4px] -translate-y-1/2 z-0 transition-all duration-500 ${leftLineColor}`}
                       />
                     )}
                     {/* Conector derecho */}
                     {idx < stepperSteps.length - 1 && (
                       <div 
-                        className={`absolute left-1/2 right-0 top-6 h-[4px] -translate-y-1/2 z-0 transition-all duration-500 ${
-                          isCompleted ? "bg-[#A0522D]" : "bg-slate-200"
-                        }`}
+                        className={`absolute left-1/2 right-0 top-6 h-[4px] -translate-y-1/2 z-0 transition-all duration-500 ${rightLineColor}`}
                       />
                     )}
 
                     {/* Círculo del paso */}
-                    {isCompleted ? (
+                    {state === "completed" ? (
                       <div className="relative z-10 flex items-center justify-center w-12 h-12">
-                        <div className="w-9 h-9 rounded-full bg-[#A0522D] text-white flex items-center justify-center shadow-md">
+                        <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
                           <Check className="w-5 h-5 stroke-[2.5]" />
                         </div>
                       </div>
-                    ) : isActive ? (
-                      <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-orange-100/70 border border-orange-200/50 shadow-sm">
-                        <div className="w-9 h-9 rounded-full bg-[#A0522D] text-white flex items-center justify-center shadow-md animate-pulse-subtle">
+                    ) : state === "cancelled" ? (
+                      <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-red-100/70 border border-red-200/50 shadow-sm">
+                        <div className="w-9 h-9 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md">
+                          <X className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                      </div>
+                    ) : state === "current" ? (
+                      <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-full bg-amber-100/70 border border-amber-200/50 shadow-sm">
+                        <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-md animate-pulse-subtle">
                           <StepIcon className="w-4.5 h-4.5" />
                         </div>
                       </div>
@@ -328,13 +648,18 @@ export default function DetalleCotizacion() {
                     )}
 
                     {/* Nombres principales y secundarios */}
-                    <div className="text-center mt-3 px-1">
-                      <p className={`text-sm font-bold leading-tight ${isPending ? "text-slate-400" : "text-slate-800"}`}>
+                    <div className="text-center mt-3 px-1 flex flex-col items-center">
+                      <p className={`text-sm font-bold leading-tight ${state === "pending" ? "text-slate-400" : "text-slate-800"}`}>
                         {step.label}
                       </p>
-                      <p className={`text-[11px] mt-0.5 whitespace-nowrap ${secondaryTextColor}`}>
-                        {secondaryText}
+                      <p className={`text-[11px] mt-1 whitespace-nowrap ${statusTextColor}`}>
+                        {statusText}
                       </p>
+                      {historyDate && (
+                        <p className="text-[10px] mt-0.5 text-slate-500 font-mono">
+                          {formatStepperDate(historyDate)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 );
@@ -415,35 +740,51 @@ export default function DetalleCotizacion() {
                     <thead className="text-xs text-slate-500 font-semibold bg-slate-50 border-b border-slate-100 uppercase">
                       <tr>
                         <th className="py-3 px-2 whitespace-nowrap">Color / Talla</th>
-                        <th className="py-3 px-2 text-center">S</th>
-                        <th className="py-3 px-2 text-center">M</th>
-                        <th className="py-3 px-2 text-center">L</th>
-                        <th className="py-3 px-2 text-center">XL</th>
-                        <th className="py-3 px-2 text-center font-bold text-slate-700">Total</th>
+                        {uniqueSizes.map((size: any) => (
+                          <th key={size.id} className="py-3 px-2 text-center">{size.abbreviation || size.name}</th>
+                        ))}
+                        {uniqueSizes.length > 1 && (
+                          <th className="py-3 px-2 text-center font-bold text-slate-700">Total</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {mockMatrix.map(row => (
-                        <tr key={row.id}>
+                      {uniqueColors.map((color: any) => (
+                        <tr key={color.id}>
                           <td className="py-3 px-2 flex items-center gap-2 whitespace-nowrap">
-                            <div className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0" style={{ backgroundColor: row.hex }}></div>
-                            <span className="font-medium text-slate-700 text-xs">{row.colorName}</span>
+                            <div 
+                              className="w-4 h-4 rounded-full border border-slate-200 shadow-sm shrink-0" 
+                              style={{ backgroundColor: color.hex }}
+                            ></div>
+                            <span className="font-medium text-slate-700 text-xs">{color.name}</span>
                           </td>
-                          <td className="py-3 px-2 text-center text-slate-600">{row.s}</td>
-                          <td className="py-3 px-2 text-center text-slate-600">{row.m}</td>
-                          <td className="py-3 px-2 text-center text-slate-600">{row.l}</td>
-                          <td className="py-3 px-2 text-center text-slate-600">{row.xl}</td>
-                          <td className="py-3 px-2 text-center font-bold text-slate-900">{row.total}</td>
+                          {uniqueSizes.map((size: any) => (
+                            <td key={size.id} className="py-3 px-2 text-center text-slate-600">
+                              {getQuantity(color.id, size.id)}
+                            </td>
+                          ))}
+                          {uniqueSizes.length > 1 && (
+                            <td className="py-3 px-2 text-center font-bold text-slate-900">
+                              {getColorTotal(color.id)}
+                            </td>
+                          )}
                         </tr>
                       ))}
-                      <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
-                        <td className="py-3 px-2 text-slate-700 text-xs uppercase whitespace-nowrap">Totales por Talla</td>
-                        <td className="py-3 px-2 text-center text-blue-700">85</td>
-                        <td className="py-3 px-2 text-center text-blue-700">165</td>
-                        <td className="py-3 px-2 text-center text-blue-700">165</td>
-                        <td className="py-3 px-2 text-center text-blue-700">85</td>
-                        <td className="py-3 px-2 text-center text-orange-600 text-lg">500</td>
-                      </tr>
+                      {uniqueColors.length > 1 && (
+                        <tr className="bg-slate-50 font-bold border-t-2 border-slate-200">
+                          <td className="py-3 px-2 text-slate-700 text-xs uppercase whitespace-nowrap">Totales por Talla</td>
+                          {uniqueSizes.map((size: any) => (
+                            <td key={size.id} className="py-3 px-2 text-center text-blue-700">
+                              {getSizeTotal(size.id)}
+                            </td>
+                          ))}
+                          {uniqueSizes.length > 1 && (
+                            <td className="py-3 px-2 text-center text-orange-600 text-lg">
+                              {totalQuantity}
+                            </td>
+                          )}
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -535,25 +876,39 @@ export default function DetalleCotizacion() {
                     <table className="w-full text-sm text-left">
                       <thead className="text-xs text-slate-500 font-semibold bg-slate-50 border-b border-slate-100 uppercase">
                         <tr>
-                          <th className="py-2 px-2 whitespace-nowrap">Elemento</th>
-                          <th className="py-2 px-2 whitespace-nowrap">Especificación</th>
                           <th className="py-2 px-2 whitespace-nowrap">Ubicación</th>
-                          <th className="py-2 px-2 whitespace-nowrap">Método</th>
+                          <th className="py-2 px-2 whitespace-nowrap">Método / Técnica</th>
+                          <th className="py-2 px-2 whitespace-nowrap">Especificaciones</th>
+                          <th className="py-2 px-2 whitespace-nowrap">Rotación</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {mockSpecs.map(spec => (
-                          <tr key={spec.id}>
-                            <td className="py-3 px-2 font-medium text-slate-800 whitespace-nowrap">{spec.element}</td>
-                            <td className="py-3 px-2 text-slate-600 whitespace-nowrap">{spec.spec}</td>
-                            <td className="py-3 px-2 text-slate-600 whitespace-nowrap">{spec.location}</td>
-                            <td className="py-3 px-2 whitespace-nowrap">
-                              <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${spec.methodColor}`}>
-                                {spec.method}
-                              </span>
+                        {!quote.designs || quote.designs.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
+                              No hay especificaciones de personalización registradas.
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          quote.designs.map((design: any) => (
+                            <tr key={design.id}>
+                              <td className="py-3 px-2 font-medium text-slate-800 whitespace-nowrap">
+                                {translatePlacement(design.placement)}
+                              </td>
+                              <td className="py-3 px-2 whitespace-nowrap">
+                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${getTechniqueBadgeClass(design.technique?.name)}`}>
+                                  {design.technique?.name || "Sin especificar"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-2 text-slate-600 whitespace-nowrap">
+                                {Math.round(design.width)}px x {Math.round(design.height)}px
+                              </td>
+                              <td className="py-3 px-2 text-slate-600 whitespace-nowrap">
+                                {design.rotation ? Math.round(design.rotation) : 0}°
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -582,114 +937,240 @@ export default function DetalleCotizacion() {
       {/* BOTONERA INFERIOR: Contenedor sticky transparente de ancho completo para garantizar el seguimiento */}
       <div className="sticky bottom-0 w-full z-40 bg-transparent mt-auto">
         <div className="bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-[0_10px_30px_rgba(0,0,0,0.08),_0_-10px_15px_-3px_rgba(0,0,0,0.03)] mx-6 mb-6">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          <Button 
-            className="w-full h-12 text-base bg-red-600 hover:bg-red-700 text-white" 
-            onClick={() => setActiveModal("RECHAZAR")}
-          >
-            Rechazar
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="w-full h-12 text-base border-slate-300 text-slate-700 hover:bg-slate-50 font-medium" 
-            onClick={() => router.push(`/gestion-cotizaciones/${id}/formalizar`)}
-          >
-            Actualizar Información
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="w-full h-12 text-base border-slate-300 text-slate-700 hover:bg-slate-50 font-medium" 
-            onClick={() => setActiveModal("WHATSAPP")}
-          >
-            Negociación Externa
-          </Button>
-          
-          <Button 
-            className="w-full h-12 text-base bg-emerald-500 hover:bg-emerald-600 text-white" 
-            onClick={() => setActiveModal("ACEPTAR")}
-          >
-            Aceptar
-          </Button>
-          
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {getBottomButtons(quote).map((btn, idx) => (
+              <button
+                key={idx}
+                disabled={btn.disabled}
+                onClick={() => {
+                  if (btn.action === "RECHAZAR") {
+                    setActiveModal("RECHAZAR");
+                  } else if (btn.action === "INVIABLE") {
+                    setActiveModal("INVIABLE");
+                  } else if (btn.action === "VIABLE") {
+                    setActiveModal("VIABLE");
+                  } else if (btn.action === "ACEPTAR") {
+                    setActiveModal("ACEPTAR");
+                  } else if (btn.action === "WHATSAPP") {
+                    setActiveModal("WHATSAPP");
+                  } else if (btn.action === "ACTUALIZAR") {
+                    router.push(`/gestion-cotizaciones/${id}/actualizar-cotizacion`);
+                  }
+                }}
+                className={`w-full sm:flex-1 h-12 text-base font-semibold rounded-xl flex items-center justify-center border ${getButtonClass(btn.variant)}`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
       </div>
 
 
       {/* MODALES */}
-      <Dialog open={activeModal === "RECHAZAR"} onOpenChange={(open) => !open && setActiveModal(null)}>
-        <DialogContent>
+      {/* MODALES */}
+      
+      {/* Modal 1: VIABLE */}
+      <Dialog open={activeModal === "VIABLE"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-red-600 flex items-center gap-2">
-              <XCircle className="w-5 h-5" /> Rechazar Cotización
+            <DialogTitle className="text-emerald-600 flex items-center gap-2">
+              <CheckCircle className="w-5.5 h-5.5" /> Confirmar Viabilidad
             </DialogTitle>
-            <DialogDescription>Indica el motivo de rechazo.</DialogDescription>
+            <DialogDescription>
+              Aceptarás el diseño de esta cotización como viable.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Textarea 
-              placeholder="Motivo..." 
-              value={rejectReason} 
-              onChange={(e) => setRejectReason(e.target.value)} 
-              rows={4} 
-            />
+          <div className="py-2 text-sm text-slate-600">
+            ¿Estás seguro de que deseas marcar este diseño como viable? Al confirmar, aceptarás la propuesta de diseño técnico.
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveModal(null)}>Cancelar</Button>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setActiveModal(null)} className="border-slate-300">
+              Cancelar
+            </Button>
             <Button 
-              variant="destructive" 
-              disabled={!rejectReason || markUnfeasible.isPending} 
-              onClick={handleRejectSubmit}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold" 
+              onClick={() => {
+                toast.success("Diseño marcado como viable (Simulado)");
+                setActiveModal(null);
+              }}
             >
-              {markUnfeasible.isPending ? "Rechazando..." : "Confirmar"}
+              Confirmar Viabilidad
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Modal 2: INVIABLE */}
+      <Dialog open={activeModal === "INVIABLE"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <XCircle className="w-5.5 h-5.5" /> Declarar Diseño Inviable
+            </DialogTitle>
+            <DialogDescription>
+              Indica el motivo técnico por el cual declaras el diseño como inviable.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <p className="text-sm text-slate-600">
+              Al confirmar, se registrará el diseño como inviable y se le notificará al cliente para que realice ajustes.
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-500">Motivo de Inviabilidad *</label>
+              <Textarea 
+                placeholder="Ej. El diseño excede el tamaño máximo permitido para la manga..." 
+                value={unfeasibleReason} 
+                onChange={(e) => setUnfeasibleReason(e.target.value)} 
+                rows={4} 
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setActiveModal(null)} className="border-slate-300">
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              disabled={!unfeasibleReason.trim()} 
+              onClick={() => {
+                toast.success("Diseño marcado como inviable (Simulado)");
+                setActiveModal(null);
+              }}
+            >
+              Confirmar Inviabilidad
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 3: RECHAZAR */}
+      <Dialog open={activeModal === "RECHAZAR"} onOpenChange={(open) => !open && setActiveModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <XCircle className="w-5.5 h-5.5" /> Rechazar Cotización
+            </DialogTitle>
+            <DialogDescription>
+              Estás por rechazar de forma definitiva esta cotización.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-4">
+            <p className="text-sm text-slate-600">
+              Esta acción cancelará el flujo de negociación. Por favor indica el motivo del rechazo.
+            </p>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-500">Motivo de Rechazo *</label>
+              <Textarea 
+                placeholder="Indica el motivo por el cual rechazas esta cotización..." 
+                value={rejectReason} 
+                onChange={(e) => setRejectReason(e.target.value)} 
+                rows={4} 
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setActiveModal(null)} className="border-slate-300">
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              disabled={!rejectReason.trim()} 
+              onClick={handleRejectSubmit}
+            >
+              Confirmar Rechazo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 4: ACEPTAR */}
       <Dialog open={activeModal === "ACEPTAR"} onOpenChange={(open) => !open && setActiveModal(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="text-green-600 flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" /> Aceptar Cotización
+              <CheckCircle className="w-5.5 h-5.5" /> Aceptar Cotización
             </DialogTitle>
-            <DialogDescription>Aprobarás esta cotización e indicarás el precio propuesto para este lote.</DialogDescription>
+            <DialogDescription>
+              Aprobarás esta cotización e indicarás la propuesta final para este lote.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Precio Propuesto de Lote (S/)</label>
-              <Input 
-                type="number" 
-                placeholder="Ej. 1250" 
-                value={proposalPrice} 
-                onChange={(e) => setProposalPrice(e.target.value)} 
-              />
+          <div className="py-2 space-y-4">
+            {/* Resumen */}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs space-y-2">
+              <div className="flex justify-between items-center text-slate-500">
+                <span>Valor estimado original:</span>
+                <span className="font-bold text-slate-800">S/ {quotedPrice ? Number(quotedPrice).toFixed(2) : "0.00"}</span>
+              </div>
+              <div className="flex justify-between items-center text-slate-500">
+                <span>Cantidad total de prendas:</span>
+                <span className="font-bold text-slate-800">{totalQuantity} unidades</span>
+              </div>
+              <div className="border-t border-slate-100 pt-2 text-slate-500 space-y-1.5">
+                <span className="block font-medium mb-1">Ubicaciones de Personalización:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold ${designPlacementsCount.FRONT > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                    Frontal ({designPlacementsCount.FRONT})
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold ${designPlacementsCount.BACK > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                    Espalda ({designPlacementsCount.BACK})
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold ${designPlacementsCount.RIGHTSLEEVE > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                    Manga Der. ({designPlacementsCount.RIGHTSLEEVE})
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold ${designPlacementsCount.LEFTSLEEVE > 0 ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-100 border-slate-200 text-slate-400'}`}>
+                    Manga Izq. ({designPlacementsCount.LEFTSLEEVE})
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Mensaje Comercial (Opcional)</label>
-              <Textarea 
-                placeholder="Ej. Precio con descuento..." 
-                value={proposalMessage} 
-                onChange={(e) => setProposalMessage(e.target.value)} 
-                rows={3} 
-              />
+
+            {/* Formulario */}
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">Valor Preciso de Cotización (S/) *</label>
+                <Input 
+                  type="number" 
+                  placeholder="Ej. 1250" 
+                  value={proposalPrice} 
+                  onChange={(e) => setProposalPrice(e.target.value)} 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">Tiempo Estimado de Producción *</label>
+                <Input 
+                  placeholder="Ej. 5 días hábiles" 
+                  value={proposalEstimatedDays} 
+                  onChange={(e) => setProposalEstimatedDays(e.target.value)} 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">Mensaje Comercial *</label>
+                <Textarea 
+                  placeholder="Ej. El precio propuesto incluye el descuento por volumen coordinado..." 
+                  value={proposalMessage} 
+                  onChange={(e) => setProposalMessage(e.target.value)} 
+                  rows={3} 
+                />
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActiveModal(null)}>Cancelar</Button>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setActiveModal(null)} className="border-slate-300">
+              Cancelar
+            </Button>
             <Button 
               className="bg-[#10B981] hover:bg-[#059669] text-white" 
               onClick={handleAcceptSubmit}
-              disabled={!proposalPrice || respondQuote.isPending}
+              disabled={!proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice))}
             >
-              {respondQuote.isPending ? "Aprobando..." : "Aprobar"}
+              Confirmar y Enviar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Modal 5: WHATSAPP */}
       <Dialog open={activeModal === "WHATSAPP"} onOpenChange={(open) => !open && setActiveModal(null)}>
         <DialogContent className="max-w-md p-6 bg-white rounded-2xl border border-slate-200 shadow-xl">
           <DialogHeader className="space-y-1">
@@ -737,11 +1218,11 @@ export default function DetalleCotizacion() {
             Contactar por WhatsApp
           </button>
 
-          <DialogFooter className="mt-4 flex justify-end">
+          <DialogFooter className="mt-4 flex justify-end gap-2">
             <Button 
-              variant="ghost" 
-              className="text-slate-600 hover:text-slate-900 text-sm font-semibold hover:bg-slate-50"
+              variant="outline" 
               onClick={() => setActiveModal(null)}
+              className="border-slate-300"
             >
               Cancelar
             </Button>
