@@ -50,8 +50,8 @@ export default function Customizer({
     if (!containerRef.current) return;
 
     // Definimos un tamaño de visualización estándar para el paso 3 del asistente
-    const designWidth = 450;
-    const designHeight = 450;
+    const designWidth = 520;
+    const designHeight = 520;
 
     const stage = new Konva.Stage({
       container: containerRef.current,
@@ -66,6 +66,8 @@ export default function Customizer({
     layerRef.current = layer;
 
     const tr = new Konva.Transformer({
+      enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+      keepRatio: true,
       boundBoxFunc: (oldBox, newBox) => {
         // Límite mínimo para evitar voltear o achicar demasiado el diseño
         if (newBox.width < 10 || newBox.height < 10) return oldBox;
@@ -109,12 +111,22 @@ export default function Customizer({
 
     prendaImgObj.onload = () => {
       if (!stageRef.current) return;
+
+      const imgWidth = prendaImgObj.width;
+      const imgHeight = prendaImgObj.height;
+      const ratio = Math.min(designWidth / imgWidth, designHeight / imgHeight);
+
+      const newWidth = imgWidth * ratio;
+      const newHeight = imgHeight * ratio;
+      const x = (designWidth - newWidth) / 2;
+      const y = (designHeight - newHeight) / 2;
+
       const bg = new Konva.Image({
-        x: 0,
-        y: 0,
+        x: x,
+        y: y,
         image: prendaImgObj,
-        width: designWidth,
-        height: designHeight,
+        width: newWidth,
+        height: newHeight,
         listening: false, // Estático
       });
       layer.add(bg);
@@ -132,16 +144,51 @@ export default function Customizer({
         // Ignorar error de carga si el logo no está en la ubicación indicada
       };
       logoImgObj.onload = () => {
-        // Escalar coordenadas relativas al lienzo de previsualización (450x450)
+        // Escalar coordenadas relativas al lienzo de previsualización (520x520)
         const scaleXRatio = designWidth / (canvasWidth || 500);
         const scaleYRatio = designHeight / (canvasHeight || 500);
 
+        let initialWidth = width;
+        let initialHeight = height;
+
+        const logoRatio = logoImgObj.width / logoImgObj.height;
+        const currentRatio = (initialWidth && initialHeight) ? (initialWidth / initialHeight) : 1;
+        const ratioDiff = Math.abs(currentRatio - logoRatio);
+
+        if (
+          initialWidth === undefined || 
+          initialHeight === undefined || 
+          initialWidth <= 0 || 
+          initialHeight <= 0 || 
+          ratioDiff > 0.05
+        ) {
+          if (logoRatio > 1) {
+            initialWidth = width && width > 0 ? width : 120;
+            initialHeight = initialWidth / logoRatio;
+          } else {
+            initialHeight = height && height > 0 ? height : 120;
+            initialWidth = initialHeight * logoRatio;
+          }
+          
+          if (onChange) {
+            onChange({
+              positionX: positionX !== undefined ? positionX : 150,
+              positionY: positionY !== undefined ? positionY : 150,
+              width: Math.round(initialWidth),
+              height: Math.round(initialHeight),
+              rotation: rotation || 0,
+              canvasWidth: canvasWidth || 500,
+              canvasHeight: canvasHeight || 500,
+            });
+          }
+        }
+
         const logo = new Konva.Image({
-          x: positionX !== undefined ? positionX * scaleXRatio : 150,
-          y: positionY !== undefined ? positionY * scaleYRatio : 150,
+          x: positionX !== undefined ? positionX * scaleXRatio : (designWidth - (initialWidth * scaleXRatio)) / 2,
+          y: positionY !== undefined ? positionY * scaleYRatio : (designHeight - (initialHeight * scaleYRatio)) / 2,
           image: logoImgObj,
-          width: width !== undefined ? width * scaleXRatio : 100,
-          height: height !== undefined ? height * scaleYRatio : 100,
+          width: initialWidth * scaleXRatio,
+          height: initialHeight * scaleYRatio,
           rotation: rotation || 0,
           draggable: true,
           globalCompositeOperation: 'multiply', // Efecto realismo
@@ -203,7 +250,7 @@ export default function Customizer({
   }, [baseGarmentUrl, logoUrl, canvasWidth, canvasHeight, backgroundUrl]);
 
   return (
-    <div className="flex flex-col items-center bg-slate-50 border border-slate-200/60 rounded-xl p-4 shadow-sm">
+    <div className="w-full flex flex-col items-center bg-slate-50 border border-slate-200/60 rounded-xl p-4 shadow-sm">
       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 self-start pl-1 flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
         Visualizador / Posicionador 2D Interactivo

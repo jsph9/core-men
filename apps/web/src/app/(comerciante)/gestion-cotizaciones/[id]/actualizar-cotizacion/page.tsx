@@ -68,12 +68,12 @@ const getGarmentImageForPlacement = (placement: string, product: any, defaultUrl
     return backImg?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
   }
   if (placement === "LEFTSLEEVE") {
-    const leftImg = product.images.find((img: any) => img.url.includes("left") || img.url.includes("izq"));
-    return leftImg?.url || product.images[2]?.url || product.images[0]?.url || defaultUrl;
-  }
-  if (placement === "RIGHTSLEEVE") {
     const rightImg = product.images.find((img: any) => img.url.includes("right") || img.url.includes("der"));
     return rightImg?.url || product.images[3]?.url || product.images[0]?.url || defaultUrl;
+  }
+  if (placement === "RIGHTSLEEVE") {
+    const leftImg = product.images.find((img: any) => img.url.includes("left") || img.url.includes("izq"));
+    return leftImg?.url || product.images[2]?.url || product.images[0]?.url || defaultUrl;
   }
   return defaultUrl;
 };
@@ -1296,7 +1296,7 @@ export default function ActualizarCotizacion() {
       </div>
 
       {/* Botonera de Asistente Sticky */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-4 px-6 z-20 shadow-md">
+      <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-slate-200 py-4 px-6 z-20 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between gap-4">
           <Button
             variant="outline"
