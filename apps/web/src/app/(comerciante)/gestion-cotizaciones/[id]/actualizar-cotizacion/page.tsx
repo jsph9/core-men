@@ -884,7 +884,7 @@ export default function ActualizarCotizacion() {
                   backgroundImage: `url(${activeBgUrl})`,
                 }}
               >
-                {/* Visibility Area Wrapper (centers canvas, tabs, zoom, and coordinate panels in the visible space to the left of the sidebar) */}
+                {/* Visibility Area Wrapper (centers canvas, zoom, and coordinate panels in the visible space to the left of the sidebar) */}
                 <div className="absolute left-0 right-[344px] top-0 bottom-0 pointer-events-none z-0">
                   {/* 1. Canvas Konva (Centered Transparent Canvas) */}
                   <div className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none">
@@ -982,36 +982,9 @@ export default function ActualizarCotizacion() {
                     </div>
                   </div>
 
-                  {/* 3. Floating View Tabs (Top Center) */}
-                  {designs.length > 1 && (
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-slate-200/50 flex gap-1.5 z-10 transition-all hover:bg-white pointer-events-auto">
-                      {designs.map((d, index) => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => setActiveDesignIdx(index)}
-                          className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all ${
-                            activeDesignIdx === index
-                              ? "bg-blue-600 text-white shadow-sm"
-                              : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                          }`}
-                        >
-                          {d.placement === "FRONT" ? "Frontal" : d.placement === "BACK" ? "Espalda" : d.placement === "LEFTSLEEVE" ? "Manga Izq." : "Manga Der."}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 4. Floating Coordinates & Properties Panel (Bottom Left/Center) */}
+                  {/* 4. Floating Coordinates & Properties Panel (Bottom Left/Center) - Removed header and Canvas inputs */}
                   {designs[activeDesignIdx] && (
                     <div className="absolute bottom-6 left-6 right-6 bg-white/90 backdrop-blur-md p-5 rounded-2xl shadow-xl border border-slate-200/50 z-10 transition-all hover:bg-white pointer-events-auto">
-                      <div className="border-b border-slate-150 pb-2.5 mb-3 flex justify-between items-center">
-                        <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">Propiedades Técnicas y Coordenadas</span>
-                        <span className="text-xs font-bold text-slate-700">
-                          Vista: {designs[activeDesignIdx].placement === "FRONT" ? "Frontal" : designs[activeDesignIdx].placement === "BACK" ? "Espalda" : designs[activeDesignIdx].placement === "LEFTSLEEVE" ? "Manga Izquierda" : "Manga Derecha"}
-                        </span>
-                      </div>
-
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {/* Técnica de Personalización */}
                         <div>
@@ -1072,55 +1045,52 @@ export default function ActualizarCotizacion() {
                           </div>
                         </div>
 
-                        {/* Rotación y Medidas de Canvas */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 block mb-1 uppercase tracking-wider">Rotación (°)</label>
-                            <Input 
-                              type="number"
-                              value={Math.round(designs[activeDesignIdx].rotation)}
-                              onChange={(e) => handleDesignChange(activeDesignIdx, "rotation", parseInt(e.target.value) || 0)}
-                              className="h-9 text-xs font-semibold"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-extrabold text-slate-400 block mb-1 uppercase tracking-wider">Canvas</label>
-                            <div className="flex gap-1.5">
-                              <Input 
-                                type="number"
-                                value={Math.round(designs[activeDesignIdx].canvasWidth)}
-                                onChange={(e) => handleDesignChange(activeDesignIdx, "canvasWidth", parseInt(e.target.value) || 0)}
-                                className="h-9 text-xs px-1 text-center font-semibold"
-                                placeholder="W"
-                                title="Ancho Canvas"
-                              />
-                              <Input 
-                                type="number"
-                                value={Math.round(designs[activeDesignIdx].canvasHeight)}
-                                onChange={(e) => handleDesignChange(activeDesignIdx, "canvasHeight", parseInt(e.target.value) || 0)}
-                                className="h-9 text-xs px-1 text-center font-semibold"
-                                placeholder="H"
-                                title="Alto Canvas"
-                              />
-                            </div>
-                          </div>
+                        {/* Rotación */}
+                        <div>
+                          <label className="text-[10px] font-extrabold text-slate-400 block mb-1 uppercase tracking-wider">Rotación (°)</label>
+                          <Input 
+                            type="number"
+                            value={Math.round(designs[activeDesignIdx].rotation)}
+                            onChange={(e) => handleDesignChange(activeDesignIdx, "rotation", parseInt(e.target.value) || 0)}
+                            className="h-9 text-xs font-semibold"
+                          />
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
 
+                {/* 3. Floating View Tabs (Top Center) - Centered relative to entire container, outside the visibility area wrapper */}
+                {designs.length > 1 && (
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md p-1.5 rounded-xl shadow-lg border border-slate-200/50 flex gap-1.5 z-10 transition-all hover:bg-white">
+                    {designs.map((d, index) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setActiveDesignIdx(index)}
+                        className={`px-4 py-2 text-xs font-extrabold rounded-lg transition-all ${
+                          activeDesignIdx === index
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
+                        }`}
+                      >
+                        {d.placement === "FRONT" ? "Frontal" : d.placement === "BACK" ? "Espalda" : d.placement === "LEFTSLEEVE" ? "Manga Izq." : "Manga Der."}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* 5. Floating Sidebar Accordion Panel (Right Side) */}
                 <div className="absolute right-6 top-6 bottom-6 w-80 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/50 flex flex-col justify-between p-6 z-10 overflow-y-auto transition-all hover:bg-white select-none">
                   <div className="space-y-4">
-                    {/* CATEGORÍA 1: Upload Design */}
+                    {/* CATEGORÍA 1: Subir Diseño */}
                     <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-slate-300">
                       <button
                         type="button"
                         onClick={() => setOpenSection(openSection === "Upload Design" ? null : "Upload Design")}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-extrabold text-slate-800 text-sm">Upload Design</span>
+                        <span className="font-extrabold text-slate-800 text-sm">Subir Diseño</span>
                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Upload Design" ? "transform rotate-90" : ""}`} />
                       </button>
                       {openSection === "Upload Design" && (
@@ -1140,7 +1110,7 @@ export default function ActualizarCotizacion() {
                           {designs[activeDesignIdx] && designs[activeDesignIdx].logoUrl && (
                             <div className="bg-slate-100 rounded-lg p-2.5 flex items-center justify-between border border-slate-200">
                               <div className="flex items-center gap-2 overflow-hidden">
-                                <div className="w-8 h-8 rounded border bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                                <div className="w-8 h-8 rounded bg-white flex items-center justify-center shrink-0 overflow-hidden">
                                   <img src={designs[activeDesignIdx].logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-600 truncate">Logo cargado</span>
@@ -1159,19 +1129,18 @@ export default function ActualizarCotizacion() {
                       )}
                     </div>
 
-                    {/* CATEGORÍA 2: Garment (Cambiar vistas 4 max) */}
+                    {/* CATEGORÍA 2: Prenda */}
                     <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-slate-300">
                       <button
                         type="button"
                         onClick={() => setOpenSection(openSection === "Garment" ? null : "Garment")}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-extrabold text-slate-800 text-sm">Garment</span>
+                        <span className="font-extrabold text-slate-800 text-sm">Prenda</span>
                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Garment" ? "transform rotate-90" : ""}`} />
                       </button>
                       {openSection === "Garment" && (
                         <div className="px-5 pb-5 border-t border-slate-100 pt-4">
-                          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Vistas de Prenda</p>
                           <div className="grid grid-cols-2 gap-2">
                             {(["FRONT", "BACK", "LEFTSLEEVE", "RIGHTSLEEVE"] as const).map((pos) => {
                               const activeDesign = designs[activeDesignIdx];
@@ -1190,7 +1159,7 @@ export default function ActualizarCotizacion() {
                                       : "border-slate-200 hover:border-slate-300"
                                   }`}
                                 >
-                                  <div className="w-8 h-8 bg-slate-50 border rounded overflow-hidden flex items-center justify-center shrink-0">
+                                  <div className="w-8 h-8 bg-slate-50 rounded overflow-hidden flex items-center justify-center shrink-0">
                                     {garmentUrl ? (
                                       <img src={garmentUrl} alt={label} className="max-w-full max-h-full object-contain" />
                                     ) : (
@@ -1206,41 +1175,40 @@ export default function ActualizarCotizacion() {
                       )}
                     </div>
 
-                    {/* CATEGORÍA 3: Background (Cambiar fondo entre 3 tipos locales) */}
+                    {/* CATEGORÍA 3: Fondo */}
                     <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-slate-300">
                       <button
                         type="button"
                         onClick={() => setOpenSection(openSection === "Background" ? null : "Background")}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-extrabold text-slate-800 text-sm">Background</span>
+                        <span className="font-extrabold text-slate-800 text-sm">Fondo</span>
                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Background" ? "transform rotate-90" : ""}`} />
                       </button>
                       {openSection === "Background" && (
-                        <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-3">
-                          <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Fondo del Visualizador</p>
-                          
-                          <div className="grid grid-cols-3 gap-2">
+                        <div className="px-5 pb-5 border-t border-slate-100 pt-4">
+                          <div className="grid grid-cols-3 gap-3">
                             {[
-                              { name: "Oscuro", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/blackwall.jpg", style: "bg-slate-800 border-slate-700" },
-                              { name: "Gris", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/greywall.jpg", style: "bg-slate-300 border-slate-400" },
-                              { name: "Blanco", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/whitewall.jpg", style: "bg-white border-slate-300" },
+                              { name: "Oscuro", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/blackwall.jpg" },
+                              { name: "Gris", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/greywall.jpg" },
+                              { name: "Blanco", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/whitewall.jpg" },
                             ].map((bg) => {
                               const isSelected = activeBgUrl === bg.url;
                               return (
-                                <button
-                                  key={bg.name}
-                                  type="button"
-                                  onClick={() => setActiveBgUrl(bg.url)}
-                                  className={`h-11 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                    isSelected 
-                                      ? "border-blue-500 scale-105 shadow-sm" 
-                                      : "border-slate-200 hover:border-slate-300"
-                                  }`}
-                                  title={bg.name}
-                                >
-                                  <div className={`w-6 h-6 rounded-md border ${bg.style}`} />
-                                </button>
+                                <div key={bg.name} className="flex flex-col items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveBgUrl(bg.url)}
+                                    className={`w-full h-12 rounded-xl border-2 transition-all overflow-hidden bg-cover bg-center ${
+                                      isSelected 
+                                        ? "border-blue-500 scale-105 shadow-sm" 
+                                        : "border-slate-200 hover:border-slate-300"
+                                    }`}
+                                    style={{ backgroundImage: `url(${bg.url})` }}
+                                    title={bg.name}
+                                  />
+                                  <span className="text-[10px] font-bold text-slate-500">{bg.name}</span>
+                                </div>
                               );
                             })}
                           </div>
@@ -1248,33 +1216,50 @@ export default function ActualizarCotizacion() {
                       )}
                     </div>
 
-                    {/* CATEGORÍA 4: Advanced */}
+                    {/* CATEGORÍA 4: Avanzado */}
                     <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-slate-300">
                       <button
                         type="button"
                         onClick={() => setOpenSection(openSection === "Advanced" ? null : "Advanced")}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-extrabold text-slate-800 text-sm">Advanced</span>
+                        <span className="font-extrabold text-slate-800 text-sm">Avanzado</span>
                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Advanced" ? "transform rotate-90" : ""}`} />
                       </button>
                       {openSection === "Advanced" && (
-                        <div className="px-5 pb-5 border-t border-slate-100 pt-4">
-                          <p className="text-xs text-slate-400 italic text-center py-2">Sin opciones avanzadas por el momento.</p>
+                        <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-4">
+                          {/* Medidas de Canvas (Estático) */}
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Medidas de Canvas</span>
+                            <div className="flex gap-4 text-xs font-bold text-slate-700 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100">
+                              <div>
+                                <span className="text-[10px] text-slate-400 block font-normal">Ancho</span>
+                                <span>520 px</span>
+                              </div>
+                              <div className="border-r border-slate-200" />
+                              <div>
+                                <span className="text-[10px] text-slate-400 block font-normal">Alto</span>
+                                <span>520 px</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Checkbox Efecto de Tela */}
+                          <div className="flex items-center gap-2.5 pt-1.5">
+                            <input
+                              type="checkbox"
+                              id="efectoTelaMock"
+                              className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                              defaultChecked
+                            />
+                            <label htmlFor="efectoTelaMock" className="text-xs font-extrabold text-slate-700 cursor-pointer select-none">
+                              Efecto de Tela
+                            </label>
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
-
-                  {/* Botón Export Premium (Inactivo en gris) */}
-                  <button
-                    type="button"
-                    disabled
-                    className="w-full h-12 bg-slate-150 text-slate-400 rounded-full flex items-center justify-center gap-2 font-bold text-sm shadow-none cursor-not-allowed mt-4 transition-colors"
-                  >
-                    <Download className="h-4.5 w-4.5 text-slate-400" />
-                    Export Premium
-                  </button>
                 </div>
               </div>
             )}
