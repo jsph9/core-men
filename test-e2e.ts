@@ -41,6 +41,8 @@ async function runTest() {
       categoryId: cat.id,
       fabricId: fab.id,
       imageUrl: "",
+      fiberComposition: "95% Algodón, 5% Lycra",
+      careInstructions: "Lavar a máquina en frío",
       variants: [
         {
           sizeId: size.id,
@@ -51,7 +53,7 @@ async function runTest() {
       ]
     };
 
-    const createRes = await fetch('http://localhost:3001/api/products', {
+    const createRes = await fetch('http://localhost:3001/api/admin/products', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

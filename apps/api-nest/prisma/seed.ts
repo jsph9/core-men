@@ -163,12 +163,16 @@ async function main() {
       v: [{c: 'Negro', s: ['M'], stk: 120}, {c: 'Azul Marino', s: ['M'], stk: 90}, {c: 'Rojo', s: ['M'], stk: 60}, {c: 'Blanco', s: ['M'], stk: 50}] },
     { n: 'Polo Cuello V', c: 'Polos', f: 'Algodón Jersey 30/1', p: 22, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 8}, {n: 'Serigrafía', p: 2.5}],
-      v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}] }
+      v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}] },
+    { id: 'dc6d8150-864e-4739-9328-4c12d5a7bec2', n: 'Polo Camisero Negro Clásico', c: 'Polos', f: 'Algodón Piqué', p: 35, comp: '100% Algodón', g: 'TIPO A',
+      t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 10}],
+      v: [{c: 'Negro', s: ['S','M','L','XL'], stk: 80}] }
   ];
 
-  for (const p of productsData) {
+  for (const p of productsData as any[]) {
     const prod = await prisma.product.create({
       data: {
+        ...(p.id ? { id: p.id } : {}),
         name: p.n, basePrice: p.p, fiberComposition: p.comp, sizeGuideText: p.g, careInstructions: 'Lavar según etiqueta',
         categoryId: getId(dbCats, 'name', p.c)!, fabricId: getId(dbFabs, 'value', p.f)!,
         images: { create: [{ url: `https://placehold.co/800x800/FFFFFF/000000.png?text=${p.n.replace(/ /g, '+')}`, isPrimary: true }] }
@@ -523,6 +527,52 @@ async function main() {
             oldValue: 'PENDING', 
             newValue: 'IN_NEGOTIATION', 
             changedBy: merchant.id 
+          }
+        ]
+      }
+    }
+  });
+
+  // Cotización 2.6 (Polo Camisero Negro Clásico - Pendiente Sin Visitar)
+  await prisma.quote.create({
+    data: {
+      clientId: client1.id, 
+      totalQuantity: 10, 
+      message: 'Cotización para 10 polos camiseros negros clásicos.', 
+      isVisited: false,
+      status: QuoteMacroStatus.PENDING,
+      viabilityStatus: ViabilityStatus.PENDING,
+      customerResponseStatus: CustomerResponseStatus.PENDING,
+      clientFormalizationStatus: ClientFormalizationStatus.PENDING,
+      estimatedPrice: 350.00,
+      items: { 
+        create: [
+          { productVariantId: await getVariant('Polo Camisero Negro Clásico', 'Negro', 'M'), quantity: 10 }
+        ] 
+      },
+      designs: { 
+        create: [
+          { 
+            placement: DesignPlacement.FRONT, 
+            techniqueId: getId(dbTechs, 'name', 'Bordado')!, 
+            baseGarmentUrl: '/polo_front.png', 
+            logoUrl: '/logo1.png', 
+            positionX: 45, 
+            positionY: 30, 
+            width: 10, 
+            height: 10, 
+            rotation: 0, 
+            canvasWidth: 500, 
+            canvasHeight: 500 
+          }
+        ]
+      },
+      statusHistory: { 
+        create: [
+          { 
+            changedField: 'STATUS', 
+            newValue: 'PENDING', 
+            changedBy: client1.id 
           }
         ]
       }

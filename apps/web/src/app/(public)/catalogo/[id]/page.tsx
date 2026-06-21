@@ -21,6 +21,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
   const [quantity, setQuantity] = useState(1);
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedSize, setSelectedSize] = useState("");
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
   const { data: product, isLoading } = useQuery<any>({
     queryKey: ["product", id],
@@ -131,7 +132,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
         {/* Left: Image Gallery */}
         <div className="space-y-4">
           <div className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative border border-slate-200 shadow-sm">
-            {product.images?.[0] ? (
+            {product.images?.[activeImageIdx] ? (
+              <Image src={product.images[activeImageIdx].url} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
+            ) : product.images?.[0] ? (
               <Image src={product.images[0].url} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" unoptimized />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-9xl bg-gradient-to-br from-slate-100 to-slate-200">
@@ -149,14 +152,33 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
           
-          {/* Thumbnails placeholder */}
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {[1, 2, 3].map(i => (
-              <button key={i} className={`w-20 h-24 rounded-xl border-2 overflow-hidden shrink-0 transition-all ${i === 1 ? 'border-blue-500 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}>
-                <div className="w-full h-full bg-slate-200 flex items-center justify-center text-xl">👕</div>
-              </button>
-            ))}
-          </div>
+          {/* Gallery Thumbnails */}
+          {product.images && product.images.length > 1 && (
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {product.images.map((img: any, idx: number) => {
+                const isActive = idx === activeImageIdx;
+                return (
+                  <button
+                    key={img.id || idx}
+                    type="button"
+                    onClick={() => setActiveImageIdx(idx)}
+                    className={`w-20 h-24 rounded-xl border-2 overflow-hidden shrink-0 transition-all relative ${
+                      isActive ? 'border-blue-500 opacity-100' : 'border-slate-200 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <Image
+                      src={img.url}
+                      alt={`${product.name} - Vista ${idx + 1}`}
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right: Product Details & CTA */}
@@ -231,6 +253,29 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
                     {size}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Ficha Técnica (Composición, Cuidado, Tela, Categoría) */}
+            <div className="border-t border-slate-200 pt-6 space-y-4">
+              <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Ficha Técnica</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div>
+                  <span className="text-slate-400 block text-xs uppercase font-medium">Composición</span>
+                  <span className="text-slate-800 font-semibold">{product.fiberComposition || "No especificado"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-xs uppercase font-medium">Cuidado</span>
+                  <span className="text-slate-800 font-semibold">{product.careInstructions || "No especificado"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-xs uppercase font-medium">Tela Base</span>
+                  <span className="text-slate-800 font-semibold">{product.fabric?.value || "No especificado"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-xs uppercase font-medium">Categoría</span>
+                  <span className="text-slate-800 font-semibold">{product.category?.name || "No especificado"}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -14,10 +14,14 @@ import { SharedModule } from './shared/shared.module';
 import { UsersModule } from './users/users.module';
 import { CustomizationModule } from './customization/customization.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env', '../../.env'],
+    }),
     PrismaModule, 
     AuthModule, 
     ProductsModule, 
@@ -29,7 +33,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     SharedModule,
     UsersModule,
     CustomizationModule,
-    WebhooksModule
+    WebhooksModule,
+    UploadModule
   ],
   controllers: [AppController],
   providers: [AppService],

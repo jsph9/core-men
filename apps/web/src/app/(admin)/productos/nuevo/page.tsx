@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ChevronLeft, Plus, Trash2, Image as ImageIcon } from "lucide-react";
+import { ChevronLeft, Plus, Trash2, Image as ImageIcon, Upload } from "lucide-react";
 import Link from "next/link";
 
 const productSchema = z.object({
@@ -22,7 +22,13 @@ const productSchema = z.object({
   fabricId: z.string().min(1, "Selecciona un tipo de tela"),
   sizeGuideText: z.string().optional(),
   isBaseProduct: z.boolean().default(true),
-  imageUrl: z.string().url("Debe ser una URL de imagen válida").optional().or(z.literal("")),
+  fiberComposition: z.string().min(3, "La composición debe tener al menos 3 caracteres"),
+  careInstructions: z.string().min(3, "Las instrucciones de cuidado deben tener al menos 3 caracteres"),
+  imageUrl: z.string().optional(),
+  frontImage: z.any().refine((file) => file instanceof File, "Sube la imagen frontal"),
+  backImage: z.any().refine((file) => file instanceof File, "Sube la imagen de espalda"),
+  rightImage: z.any().refine((file) => file instanceof File, "Sube la imagen de la manga derecha"),
+  leftImage: z.any().refine((file) => file instanceof File, "Sube la imagen de la manga izquierda"),
   variants: z.array(z.object({
     sizeId: z.string().min(1, "Selecciona una talla"),
     colorId: z.string().min(1, "Selecciona un color"),
@@ -52,7 +58,13 @@ export default function NuevoProductoPage() {
       fabricId: "",
       sizeGuideText: "",
       isBaseProduct: true,
+      fiberComposition: "",
+      careInstructions: "",
       imageUrl: "",
+      frontImage: undefined,
+      backImage: undefined,
+      rightImage: undefined,
+      leftImage: undefined,
       variants: [{ sizeId: "", colorId: "", stock: 0 }]
     }
   });
@@ -74,8 +86,45 @@ export default function NuevoProductoPage() {
     }
   });
 
-  const onSubmit = (data: ProductFormValues) => {
-    createMutation.mutate(data);
+  const onSubmit = async (data: ProductFormValues) => {
+    try {
+      let finalImageUrl = "";
+      let secondaryImageUrls: string[] = [];
+      
+      if (data.frontImage instanceof File) {
+        const formData = new FormData();
+        formData.append("files", data.frontImage);
+        if (data.backImage instanceof File) formData.append("files", data.backImage);
+        if (data.rightImage instanceof File) formData.append("files", data.rightImage);
+        if (data.leftImage instanceof File) formData.append("files", data.leftImage);
+
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+        const uploadRes = await fetch(`${API_URL}/api/upload/catalogo`, {
+          method: "POST",
+          body: formData,
+          credentials: "include",
+        });
+
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.message || "Error al subir las imágenes a S3");
+        }
+
+        const resData = await uploadRes.json();
+        finalImageUrl = resData.urls?.[0] || "";
+        secondaryImageUrls = resData.urls?.slice(1) || [];
+      }
+      
+      const { frontImage, backImage, rightImage, leftImage, ...payload } = data;
+      
+      createMutation.mutate({
+        ...payload,
+        imageUrl: finalImageUrl,
+        secondaryImageUrls,
+      } as any);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al procesar la imagen");
+    }
   };
 
   if (isLoadingAttributes) {
@@ -158,22 +207,86 @@ export default function NuevoProductoPage() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" {...form.register("isBaseProduct")} />
-              Esta prenda es producto base (no editable por cliente)
-            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Composición de Fibra *</label>
+                <Input {...form.register("fiberComposition")} placeholder="Ej. 100% Algodón Piqué o 95% Algodón, 5% Lycra" />
+                {form.formState.errors.fiberComposition && <p className="text-xs text-red-500">{form.formState.errors.fiberComposition.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Instrucciones de Cuidado *</label>
+                <Input {...form.register("careInstructions")} placeholder="Ej. Lavar a máquina en frío, no usar lejía" />
+                {form.formState.errors.careInstructions && <p className="text-xs text-red-500">{form.formState.errors.careInstructions.message}</p>}
+              </div>
+            </div>
+
+            {/* Removed isBaseProduct checkbox since all admin catalog products are base products by default */}
           </CardContent>
         </Card>
 
-        {/* Imagen (Mock) */}
+        {/* Subida de 4 Vistas de Prenda */}
         <Card className="border-none shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><ImageIcon className="h-5 w-5 text-slate-400" /> Imagen Principal</CardTitle>
-            <CardDescription>Para esta demostración, ingresa una URL pública de una imagen válida.</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-slate-500" /> Vistas de Prenda Requeridas (4 Imágenes)
+            </CardTitle>
+            <CardDescription>
+              Para registrar el producto, debes subir exactamente las 4 vistas requeridas en formato JPG o PNG.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Input {...form.register("imageUrl")} placeholder="https://ejemplo.com/imagen.jpg" />
-            {form.formState.errors.imageUrl && <p className="text-xs text-red-500 mt-1">{form.formState.errors.imageUrl.message}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: "frontImage", label: "Vista Frontal" },
+                { name: "backImage", label: "Vista de Espalda" },
+                { name: "rightImage", label: "Manga Derecha" },
+                { name: "leftImage", label: "Manga Izquierda" },
+              ].map((view) => {
+                const fieldName = view.name as "frontImage" | "backImage" | "rightImage" | "leftImage";
+                const file = form.watch(fieldName);
+                const error = form.formState.errors[fieldName];
+                const previewUrl = file instanceof File ? URL.createObjectURL(file) : null;
+
+                return (
+                  <div key={view.name} className="flex flex-col gap-2">
+                    <span className="text-xs font-bold text-slate-600 pl-1">{view.label} *</span>
+                    <div className="border-2 border-dashed border-slate-200 rounded-xl aspect-square flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100/70 transition-colors relative overflow-hidden group min-h-[160px]">
+                      {previewUrl ? (
+                        <div className="absolute inset-0 w-full h-full">
+                          <img src={previewUrl} alt={view.label} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => form.setValue(fieldName, undefined as any, { shouldValidate: true })}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-md hover:bg-red-600 transition-colors z-10"
+                            title="Quitar imagen"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-3 text-center">
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/jpg"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              const uploadedFile = e.target.files?.[0];
+                              if (uploadedFile) {
+                                form.setValue(fieldName, uploadedFile, { shouldValidate: true });
+                              }
+                            }}
+                          />
+                          <Upload className="h-6 w-6 text-slate-400 group-hover:text-blue-500 mb-1.5 transition-colors" />
+                          <span className="text-[10px] font-bold text-slate-600">Subir Imagen</span>
+                          <span className="text-[9px] text-slate-400 mt-0.5">JPG o PNG</span>
+                        </div>
+                      )}
+                    </div>
+                    {error && <p className="text-[10px] text-red-500 pl-1 mt-0.5">{error.message as string}</p>}
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 

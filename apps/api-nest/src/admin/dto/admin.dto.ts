@@ -58,12 +58,15 @@ export class CreateProductDto {
   imageUrl?: string;
 
   @IsOptional()
-  @IsString()
-  fiberComposition?: string;
+  @IsArray()
+  @IsString({ each: true })
+  secondaryImageUrls?: string[];
 
-  @IsOptional()
   @IsString()
-  careInstructions?: string;
+  fiberComposition: string;
+
+  @IsString()
+  careInstructions: string;
 
   @IsOptional()
   @IsArray()

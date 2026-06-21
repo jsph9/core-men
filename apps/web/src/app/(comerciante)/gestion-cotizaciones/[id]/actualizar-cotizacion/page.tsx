@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiGet, apiPatch } from "@/lib/api";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,12 @@ import {
   ArrowLeft,
   Search,
   Check,
-  Shirt
+  Shirt,
+  Upload,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Download
 } from "lucide-react";
 
 const formatPrice = (p: number | string) => {
@@ -49,6 +55,29 @@ const getProductColorsAndSizes = (variants: any[]) => {
   };
 };
 
+const getGarmentImageForPlacement = (placement: string, product: any, defaultUrl: string) => {
+  if (!product || !product.images || product.images.length === 0) {
+    return defaultUrl || "/prenda-base.png";
+  }
+  if (placement === "FRONT") {
+    const primary = product.images.find((img: any) => img.isPrimary);
+    return primary?.url || product.images[0]?.url || defaultUrl;
+  }
+  if (placement === "BACK") {
+    const secondary = product.images.find((img: any) => !img.isPrimary);
+    return secondary?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
+  }
+  if (placement === "LEFTSLEEVE" || placement === "RIGHTSLEEVE") {
+    return product.images[2]?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
+  }
+  return defaultUrl;
+};
+
+const CustomizerDinamico = dynamic(
+  () => import("@/components/Customizer/Customizer"),
+  { ssr: false, loading: () => <p className="text-center p-4 text-xs text-slate-400">Cargando visualizador 2D...</p> }
+);
+
 export default function ActualizarCotizacion() {
   const router = useRouter();
   const pathParams = useParams();
@@ -68,6 +97,9 @@ export default function ActualizarCotizacion() {
   const [selectedProductId, setSelectedProductId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [activeDesignIdx, setActiveDesignIdx] = useState(0);
+  const [openSection, setOpenSection] = useState<string | null>("Upload Design");
+  const [activeBgUrl, setActiveBgUrl] = useState<string>("/backgrounds/white.svg");
 
   // Fetch initial quote detail
   const { data: quote, isLoading } = useQuery<any>({
@@ -296,8 +328,14 @@ export default function ActualizarCotizacion() {
   };
 
   const totalQuantity = useMemo(() => {
-    return Object.values(quantities).reduce((acc: number, q: number) => acc + q, 0);
-  }, [quantities]);
+    let sum = 0;
+    uniqueColors.forEach((color: any) => {
+      uniqueSizes.forEach((size: any) => {
+        sum += getQuantity(color.id, size.id);
+      });
+    });
+    return sum;
+  }, [uniqueColors, uniqueSizes, quantities]);
 
   const handleDesignChange = (idx: number, field: string, val: any) => {
     setDesigns(prev => {
@@ -305,6 +343,39 @@ export default function ActualizarCotizacion() {
       copy[idx] = { ...copy[idx], [field]: val };
       return copy;
     });
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const localUrl = URL.createObjectURL(file);
+      handleDesignChange(activeDesignIdx, "logoUrl", localUrl);
+      toast.success("Logo cargado temporalmente para visualización.");
+    }
+  };
+
+  const selectOrCreatePlacement = (placement: "FRONT" | "BACK" | "LEFTSLEEVE" | "RIGHTSLEEVE") => {
+    const idx = designs.findIndex(d => d.placement === placement);
+    if (idx !== -1) {
+      setActiveDesignIdx(idx);
+    } else {
+      const newDesign = {
+        id: `new-${placement.toLowerCase()}-${Date.now()}`,
+        placement: placement,
+        techniqueName: "DTF",
+        width: 100,
+        height: 100,
+        rotation: 0,
+        baseGarmentUrl: "",
+        logoUrl: "",
+        positionX: 150,
+        positionY: 150,
+        canvasWidth: 500,
+        canvasHeight: 500,
+      };
+      setDesigns(prev => [...prev, newDesign]);
+      setActiveDesignIdx(designs.length);
+    }
   };
 
   const handleSave = () => {
@@ -350,20 +421,20 @@ export default function ActualizarCotizacion() {
     // Mapear los diseños con su técnica correspondiente
     const designsPayload = designs.map((d) => {
       const tech = techniquesList.find((t: any) => t.name === d.techniqueName);
-      const originalDesign = quote.designs?.find((orig: any) => orig.id === d.id);
+      const resolvedGarmentUrl = getGarmentImageForPlacement(d.placement, selectedProduct, d.baseGarmentUrl);
       
       return {
         placement: d.placement,
-        techniqueId: tech?.id || originalDesign?.techniqueId || "",
-        baseGarmentUrl: d.baseGarmentUrl || originalDesign?.baseGarmentUrl || "/prenda-base.png",
-        logoUrl: d.logoUrl || originalDesign?.logoUrl || "",
-        positionX: d.positionX || originalDesign?.positionX || 0,
-        positionY: d.positionY || originalDesign?.positionY || 0,
-        width: Number(d.width) || originalDesign?.width || 100,
-        height: Number(d.height) || originalDesign?.height || 100,
-        rotation: Number(d.rotation) || originalDesign?.rotation || 0,
-        canvasWidth: d.canvasWidth || originalDesign?.canvasWidth || 500,
-        canvasHeight: d.canvasHeight || originalDesign?.canvasHeight || 500,
+        techniqueId: tech?.id || "",
+        baseGarmentUrl: resolvedGarmentUrl || "/prenda-base.png",
+        logoUrl: d.logoUrl || "",
+        positionX: d.positionX !== undefined ? Number(d.positionX) : 0,
+        positionY: d.positionY !== undefined ? Number(d.positionY) : 0,
+        width: d.width !== undefined ? Number(d.width) : 100,
+        height: d.height !== undefined ? Number(d.height) : 100,
+        rotation: d.rotation !== undefined ? Number(d.rotation) : 0,
+        canvasWidth: d.canvasWidth !== undefined ? Number(d.canvasWidth) : 500,
+        canvasHeight: d.canvasHeight !== undefined ? Number(d.canvasHeight) : 500,
       };
     });
 
@@ -440,7 +511,7 @@ export default function ActualizarCotizacion() {
       </div>
 
       {/* Contenido del paso actual */}
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-7xl mx-auto px-6">
         
         {step === 1 && (
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
@@ -777,75 +848,359 @@ export default function ActualizarCotizacion() {
         )}
 
         {step === 3 && (
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-2">
-              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
-                <FileText className="h-6 w-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            
+            {/* Columna Izquierda/Centro: Paso 3 principal (ancho 2 cols) */}
+            <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-2">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                  <FileText className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-lg">Paso 3: Especificaciones Técnicas del Diseño</h3>
+                  <p className="text-xs text-slate-500">Ajusta la posición del logo sobre la prenda y define las especificaciones técnicas.</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-slate-800 text-lg">Paso 3: Especificaciones Técnicas del Diseño</h3>
-                <p className="text-xs text-slate-500">Indica el método de producción y dimensiones para cada colocación de logo.</p>
+
+              {designs.length === 0 ? (
+                <p className="text-center text-slate-400 py-8 text-sm">No hay personalizaciones registradas en esta cotización.</p>
+              ) : (
+                <div className="space-y-6">
+                  {/* Selector de Pestañas (Posiciones de diseño existentes) */}
+                  {designs.length > 1 && (
+                    <div className="flex flex-wrap gap-1.5 p-1 bg-slate-100 rounded-lg w-fit">
+                      {designs.map((d, index) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => setActiveDesignIdx(index)}
+                          className={`px-3.5 py-1.5 text-xs font-bold rounded-md transition-all ${
+                            activeDesignIdx === index
+                              ? "bg-white text-slate-900 shadow-sm"
+                              : "text-slate-500 hover:text-slate-800"
+                          }`}
+                        >
+                          {d.placement === "FRONT" ? "Frontal" : d.placement === "BACK" ? "Espalda" : d.placement === "LEFTSLEEVE" ? "Manga Izq." : "Manga Der."}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Canvas de Konva */}
+                  <div className="flex justify-center w-full">
+                    {designs[activeDesignIdx] && (
+                      <CustomizerDinamico
+                        baseGarmentUrl={getGarmentImageForPlacement(
+                          designs[activeDesignIdx].placement,
+                          selectedProduct,
+                          designs[activeDesignIdx].baseGarmentUrl
+                        )}
+                        logoUrl={designs[activeDesignIdx].logoUrl}
+                        positionX={designs[activeDesignIdx].positionX}
+                        positionY={designs[activeDesignIdx].positionY}
+                        width={designs[activeDesignIdx].width}
+                        height={designs[activeDesignIdx].height}
+                        rotation={designs[activeDesignIdx].rotation}
+                        canvasWidth={designs[activeDesignIdx].canvasWidth}
+                        canvasHeight={designs[activeDesignIdx].canvasHeight}
+                        backgroundUrl={activeBgUrl}
+                        onChange={(updates) => {
+                          setDesigns(prev => {
+                            const copy = [...prev];
+                            copy[activeDesignIdx] = {
+                              ...copy[activeDesignIdx],
+                              ...updates
+                            };
+                            return copy;
+                          });
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Barra de Coordenadas (Abajo de la Imagen) */}
+                  {designs[activeDesignIdx] && (
+                    <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-5 shadow-sm space-y-4 relative">
+                      <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-xl"></div>
+                      
+                      <div className="border-b border-slate-150 pb-2 flex justify-between items-center">
+                        <span className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">Propiedades Técnicas y Coordenadas</span>
+                        <span className="text-xs font-bold text-slate-700">
+                          Posición Activa: {designs[activeDesignIdx].placement === "FRONT" ? "Frontal" : designs[activeDesignIdx].placement === "BACK" ? "Espalda" : designs[activeDesignIdx].placement === "LEFTSLEEVE" ? "Manga Izquierda" : "Manga Derecha"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Técnica de Personalización */}
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-500 block mb-1 uppercase tracking-wider">Técnica</label>
+                          <select 
+                            value={designs[activeDesignIdx].techniqueName} 
+                            onChange={(e) => handleDesignChange(activeDesignIdx, "techniqueName", e.target.value)}
+                            className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500"
+                          >
+                            <option value="DTF">DTF</option>
+                            <option value="Bordado">Bordado</option>
+                            <option value="Serigrafía">Serigrafía</option>
+                            <option value="Sublimado">Sublimado</option>
+                          </select>
+                        </div>
+
+                        {/* Dimensiones (Ancho y Alto) */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Ancho (px)</label>
+                            <Input 
+                              type="number"
+                              value={Math.round(designs[activeDesignIdx].width)}
+                              onChange={(e) => handleDesignChange(activeDesignIdx, "width", parseInt(e.target.value) || 0)}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Alto (px)</label>
+                            <Input 
+                              type="number"
+                              value={Math.round(designs[activeDesignIdx].height)}
+                              onChange={(e) => handleDesignChange(activeDesignIdx, "height", parseInt(e.target.value) || 0)}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Coordenadas de Posición */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Pos X (px)</label>
+                            <Input 
+                              type="number"
+                              value={Math.round(designs[activeDesignIdx].positionX)}
+                              onChange={(e) => handleDesignChange(activeDesignIdx, "positionX", parseInt(e.target.value) || 0)}
+                              className="h-9 text-xs bg-slate-100/30"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Pos Y (px)</label>
+                            <Input 
+                              type="number"
+                              value={Math.round(designs[activeDesignIdx].positionY)}
+                              onChange={(e) => handleDesignChange(activeDesignIdx, "positionY", parseInt(e.target.value) || 0)}
+                              className="h-9 text-xs bg-slate-100/30"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Rotación y Medidas de Canvas */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Rotación (°)</label>
+                            <Input 
+                              type="number"
+                              value={Math.round(designs[activeDesignIdx].rotation)}
+                              onChange={(e) => handleDesignChange(activeDesignIdx, "rotation", parseInt(e.target.value) || 0)}
+                              className="h-9 text-xs"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Canvas (W/H)</label>
+                            <div className="flex gap-1">
+                              <Input 
+                                type="number"
+                                value={Math.round(designs[activeDesignIdx].canvasWidth)}
+                                onChange={(e) => handleDesignChange(activeDesignIdx, "canvasWidth", parseInt(e.target.value) || 0)}
+                                className="h-9 text-xs px-1 text-center"
+                                placeholder="W"
+                                title="Ancho Canvas"
+                              />
+                              <Input 
+                                type="number"
+                                value={Math.round(designs[activeDesignIdx].canvasHeight)}
+                                onChange={(e) => handleDesignChange(activeDesignIdx, "canvasHeight", parseInt(e.target.value) || 0)}
+                                className="h-9 text-xs px-1 text-center"
+                                placeholder="H"
+                                title="Alto Canvas"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Columna Derecha: Menú Acordeón */}
+            <div className="lg:col-span-1">
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-md space-y-4 flex flex-col justify-between min-h-[500px]">
+                
+                <div className="space-y-3">
+                  {/* CATEGORÍA 1: Upload Design */}
+                  <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === "Upload Design" ? null : "Upload Design")}
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <span className="font-bold text-slate-800 text-sm">Upload Design</span>
+                      <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Upload Design" ? "transform rotate-90" : ""}`} />
+                    </button>
+                    {openSection === "Upload Design" && (
+                      <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-4">
+                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100/70 transition-colors cursor-pointer relative group">
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/jpg"
+                            onChange={handleLogoUpload}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <Upload className="h-7 w-7 text-slate-400 group-hover:text-blue-500 mb-1.5 transition-colors" />
+                          <p className="text-[11px] font-bold text-slate-600">Subir imagen PNG o JPG</p>
+                          <p className="text-[9px] text-slate-400 mt-0.5">Formatos de alta calidad</p>
+                        </div>
+
+                        {designs[activeDesignIdx] && designs[activeDesignIdx].logoUrl && (
+                          <div className="bg-slate-100 rounded-lg p-2.5 flex items-center justify-between border border-slate-200">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <div className="w-8 h-8 rounded border bg-white flex items-center justify-center shrink-0 overflow-hidden">
+                                <img src={designs[activeDesignIdx].logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-600 truncate">Logo cargado</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDesignChange(activeDesignIdx, "logoUrl", "")}
+                              className="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition-colors"
+                              title="Eliminar Logo"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CATEGORÍA 2: Garment (Cambiar vistas 4 max) */}
+                  <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === "Garment" ? null : "Garment")}
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <span className="font-bold text-slate-800 text-sm">Garment</span>
+                      <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Garment" ? "transform rotate-90" : ""}`} />
+                    </button>
+                    {openSection === "Garment" && (
+                      <div className="px-5 pb-5 border-t border-slate-100 pt-4">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Vistas de Prenda (Máx 4)</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(["FRONT", "BACK", "LEFTSLEEVE", "RIGHTSLEEVE"] as const).map((pos) => {
+                            const activeDesign = designs[activeDesignIdx];
+                            const isSelected = activeDesign?.placement === pos;
+                            const label = pos === "FRONT" ? "Frontal" : pos === "BACK" ? "Espalda" : pos === "LEFTSLEEVE" ? "Manga Izq." : "Manga Der.";
+                            const garmentUrl = getGarmentImageForPlacement(pos, selectedProduct, "");
+                            
+                            return (
+                              <button
+                                key={pos}
+                                type="button"
+                                onClick={() => selectOrCreatePlacement(pos)}
+                                className={`p-2 border rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${
+                                  isSelected
+                                    ? "border-blue-500 bg-blue-50/20 ring-1 ring-blue-500/10"
+                                    : "border-slate-200 hover:border-slate-300"
+                                }`}
+                              >
+                                <div className="w-8 h-8 bg-slate-50 border rounded overflow-hidden flex items-center justify-center shrink-0">
+                                  {garmentUrl ? (
+                                    <img src={garmentUrl} alt={label} className="max-w-full max-h-full object-contain" />
+                                  ) : (
+                                    <Shirt className="w-4 h-4 text-slate-400" />
+                                  )}
+                                </div>
+                                <span className={`text-[9px] font-bold ${isSelected ? "text-blue-700" : "text-slate-600"}`}>{label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CATEGORÍA 3: Background (Cambiar fondo entre 3 tipos locales) */}
+                  <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === "Background" ? null : "Background")}
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <span className="font-bold text-slate-800 text-sm">Background</span>
+                      <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Background" ? "transform rotate-90" : ""}`} />
+                    </button>
+                    {openSection === "Background" && (
+                      <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-3">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fondo del Visualizador</p>
+                        
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { name: "Oscuro", url: "/backgrounds/dark.svg", style: "bg-slate-800 border-slate-700" },
+                            { name: "Gris", url: "/backgrounds/gray.svg", style: "bg-slate-300 border-slate-400" },
+                            { name: "Blanco", url: "/backgrounds/white.svg", style: "bg-white border-slate-300" },
+                          ].map((bg) => {
+                            const isSelected = activeBgUrl === bg.url;
+                            return (
+                              <button
+                                key={bg.name}
+                                type="button"
+                                onClick={() => setActiveBgUrl(bg.url)}
+                                className={`h-11 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                  isSelected 
+                                    ? "border-blue-500 scale-105 shadow-sm" 
+                                    : "border-slate-200 hover:border-slate-350"
+                                }`}
+                                title={bg.name}
+                              >
+                                <div className={`w-6 h-6 rounded-md border ${bg.style}`} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CATEGORÍA 4: Advanced (Vacío por ahora) */}
+                  <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+                    <button
+                      type="button"
+                      onClick={() => setOpenSection(openSection === "Advanced" ? null : "Advanced")}
+                      className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <span className="font-bold text-slate-800 text-sm">Advanced</span>
+                      <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Advanced" ? "transform rotate-90" : ""}`} />
+                    </button>
+                    {openSection === "Advanced" && (
+                      <div className="px-5 pb-5 border-t border-slate-100 pt-4">
+                        <p className="text-xs text-slate-400 italic text-center py-2">Sin opciones avanzadas por el momento.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Botón Export Premium (Inactivo en gris) */}
+                <button
+                  type="button"
+                  disabled
+                  className="w-full h-12 bg-slate-200 text-slate-400 rounded-full flex items-center justify-center gap-2 font-bold text-sm shadow-none cursor-not-allowed mt-4 transition-colors"
+                >
+                  <Download className="h-4.5 w-4.5 text-slate-400" />
+                  Export Premium
+                </button>
+
               </div>
             </div>
 
-            {designs.length === 0 ? (
-              <p className="text-center text-slate-400 py-8 text-sm">No hay personalizaciones registradas en esta cotización.</p>
-            ) : (
-              <div className="space-y-6 pt-2 divide-y divide-slate-100">
-                {designs.map((design, idx) => (
-                  <div key={design.id} className={`pt-4 ${idx === 0 ? 'pt-0' : ''}`}>
-                    <div className="flex justify-between items-center mb-3">
-                      <span className="font-bold text-sm text-slate-700 uppercase tracking-wide">
-                        Posición: {design.placement === "FRONT" ? "Frontal" : design.placement === "BACK" ? "Espalda" : design.placement === "LEFTSLEEVE" ? "Manga Izq." : "Manga Der."}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 block mb-1">Método / Técnica</label>
-                        <select 
-                          value={design.techniqueName} 
-                          onChange={(e) => handleDesignChange(idx, "techniqueName", e.target.value)}
-                          className="w-full h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        >
-                          <option value="DTF">DTF</option>
-                          <option value="Bordado">Bordado</option>
-                          <option value="Serigrafía">Serigrafía</option>
-                          <option value="Sublimado">Sublimado</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 block mb-1">Ancho (px)</label>
-                        <Input 
-                          type="number"
-                          value={Math.round(design.width)}
-                          onChange={(e) => handleDesignChange(idx, "width", parseInt(e.target.value) || 0)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 block mb-1">Alto (px)</label>
-                        <Input 
-                          type="number"
-                          value={Math.round(design.height)}
-                          onChange={(e) => handleDesignChange(idx, "height", parseInt(e.target.value) || 0)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 block mb-1">Rotación (°)</label>
-                        <Input 
-                          type="number"
-                          value={Math.round(design.rotation)}
-                          onChange={(e) => handleDesignChange(idx, "rotation", parseInt(e.target.value) || 0)}
-                          className="h-9"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -937,7 +1292,7 @@ export default function ActualizarCotizacion() {
 
       {/* Botonera de Asistente Sticky */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-4 px-6 z-20 shadow-md">
-        <div className="max-w-4xl mx-auto flex justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex justify-between gap-4">
           <Button
             variant="outline"
             disabled={step === 1 || respondMutation.isPending}

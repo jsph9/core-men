@@ -28,9 +28,12 @@ export class AdminService {
           isBaseProduct: data.isBaseProduct ?? true,
           fiberComposition: data.fiberComposition ?? '100% Algodón',
           careInstructions: data.careInstructions ?? 'Lavar a máquina en frío con colores similares',
-          ...(data.imageUrl ? {
+          ...((data.imageUrl || (data.secondaryImageUrls && data.secondaryImageUrls.length > 0)) ? {
             images: {
-              create: [{ url: data.imageUrl, isPrimary: true }],
+              create: [
+                ...(data.imageUrl ? [{ url: data.imageUrl, isPrimary: true }] : []),
+                ...(data.secondaryImageUrls || []).filter(Boolean).map(url => ({ url, isPrimary: false }))
+              ],
             },
           } : {}),
         },
@@ -78,11 +81,30 @@ export class AdminService {
         },
       });
 
-      if (typeof data.imageUrl === 'string') {
+      if (typeof data.imageUrl === 'string' || data.secondaryImageUrls) {
+        const existingImages = await tx.productImage.findMany({ where: { productId: id } });
+        const oldPrimary = existingImages.find(img => img.isPrimary)?.url || '';
+        const oldSecondaries = existingImages.filter(img => !img.isPrimary).map(img => img.url);
+
         await tx.productImage.deleteMany({ where: { productId: id } });
-        if (data.imageUrl.trim()) {
-          await tx.productImage.create({
-            data: { productId: id, url: data.imageUrl, isPrimary: true },
+
+        const imagesToCreate: { productId: string; url: string; isPrimary: boolean }[] = [];
+        
+        const primaryUrl = typeof data.imageUrl === 'string' ? data.imageUrl : oldPrimary;
+        if (primaryUrl && primaryUrl.trim()) {
+          imagesToCreate.push({ productId: id, url: primaryUrl, isPrimary: true });
+        }
+
+        const secondaries = data.secondaryImageUrls || oldSecondaries;
+        secondaries.forEach(url => {
+          if (url && url.trim()) {
+            imagesToCreate.push({ productId: id, url, isPrimary: false });
+          }
+        });
+
+        if (imagesToCreate.length > 0) {
+          await tx.productImage.createMany({
+            data: imagesToCreate,
           });
         }
       }

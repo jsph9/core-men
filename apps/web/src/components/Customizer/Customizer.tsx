@@ -1,193 +1,220 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Konva from 'konva';
 
-export default function Customizer() {
-  // Referencias para manipular el lienzo desde cualquier parte del código
+interface CustomizerProps {
+  baseGarmentUrl?: string;
+  logoUrl?: string;
+  positionX?: number;
+  positionY?: number;
+  width?: number;
+  height?: number;
+  rotation?: number;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  backgroundUrl?: string;
+  onStageReady?: (stage: Konva.Stage | null) => void;
+  onChange?: (updates: {
+    positionX: number;
+    positionY: number;
+    width: number;
+    height: number;
+    rotation: number;
+    canvasWidth: number;
+    canvasHeight: number;
+  }) => void;
+}
+
+export default function Customizer({
+  baseGarmentUrl,
+  logoUrl,
+  positionX,
+  positionY,
+  width,
+  height,
+  rotation,
+  canvasWidth,
+  canvasHeight,
+  backgroundUrl,
+  onStageReady,
+  onChange,
+}: CustomizerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage | null>(null);
   const layerRef = useRef<Konva.Layer | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const logoRef = useRef<Konva.Image | null>(null);
 
-  // Estado para guardar la URL temporal del logo que sube el usuario
-  const [logoTemporalUrl, setLogoTemporalUrl] = useState<string | null>(null);
-
-  // 1️⃣ INICIALIZAR EL LIENZO Y EL POLO BASE (Se ejecuta solo 1 vez al cargar)
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Crear el Stage y Layer
+    // Definimos un tamaño de visualización estándar para el paso 3 del asistente
+    const designWidth = 450;
+    const designHeight = 450;
+
     const stage = new Konva.Stage({
       container: containerRef.current,
-      width: 700,
-      height: 700,
+      width: designWidth,
+      height: designHeight,
     });
     stageRef.current = stage;
+    if (onStageReady) onStageReady(stage);
 
     const layer = new Konva.Layer();
     stage.add(layer);
     layerRef.current = layer;
 
-    // Crear el Transformer (los bordes para escalar)
     const tr = new Konva.Transformer({
       boundBoxFunc: (oldBox, newBox) => {
-        if (newBox.width < 30 || newBox.height < 30) return oldBox;
+        // Límite mínimo para evitar voltear o achicar demasiado el diseño
+        if (newBox.width < 10 || newBox.height < 10) return oldBox;
         return newBox;
-      }
+      },
     });
     layer.add(tr);
     transformerRef.current = tr;
 
+    // Cargar fondo si existe
+    const bgImgObj = new window.Image();
+    let bgRect: Konva.Image | null = null;
+    if (backgroundUrl) {
+      bgImgObj.src = backgroundUrl;
+      bgImgObj.onerror = () => {};
+      bgImgObj.onload = () => {
+        if (!stageRef.current) return;
+        bgRect = new Konva.Image({
+          x: 0,
+          y: 0,
+          image: bgImgObj,
+          width: designWidth,
+          height: designHeight,
+          listening: false,
+        });
+        layer.add(bgRect);
+        bgRect.moveToBottom();
+        layer.draw();
+      };
+    }
+
     // Cargar la prenda base
     const prendaImgObj = new window.Image();
-    prendaImgObj.src = '/prenda-base.png';
-    prendaImgObj.onload = () => {
-      const anchoPantalla = 700; 
-      const escala = anchoPantalla / prendaImgObj.width;
-      const altoPantalla = prendaImgObj.height * escala;
-
-      stage.width(anchoPantalla);
-      stage.height(altoPantalla);
-
-      const bg = new Konva.Image({
-        x: 0, y: 0,
-        image: prendaImgObj,
-        width: anchoPantalla, height: altoPantalla,
-        listening: false // Sigue siendo solo fondo inamovible
-      });
-      
-      layer.add(bg);
-      bg.moveToBottom(); 
-      layer.draw(); 
+    prendaImgObj.src = baseGarmentUrl || '/prenda-base.png';
+    prendaImgObj.onerror = () => {
+      // Si la imagen específica falla en cargar, cargamos la prenda base de respaldo por defecto
+      if (prendaImgObj.src !== window.location.origin + '/prenda-base.png') {
+        prendaImgObj.src = '/prenda-base.png';
+      }
     };
 
-    // Deseleccionar logo al hacer clic en el fondo de la prenda
+    prendaImgObj.onload = () => {
+      if (!stageRef.current) return;
+      const bg = new Konva.Image({
+        x: 0,
+        y: 0,
+        image: prendaImgObj,
+        width: designWidth,
+        height: designHeight,
+        listening: false, // Estático
+      });
+      layer.add(bg);
+      if (bgRect) {
+        bgRect.moveToBottom();
+      }
+      layer.draw();
+    };
+
+    // Cargar el logo del cliente si está disponible
+    if (logoUrl) {
+      const logoImgObj = new window.Image();
+      logoImgObj.src = logoUrl;
+      logoImgObj.onerror = () => {
+        // Ignorar error de carga si el logo no está en la ubicación indicada
+      };
+      logoImgObj.onload = () => {
+        // Escalar coordenadas relativas al lienzo de previsualización (450x450)
+        const scaleXRatio = designWidth / (canvasWidth || 500);
+        const scaleYRatio = designHeight / (canvasHeight || 500);
+
+        const logo = new Konva.Image({
+          x: positionX !== undefined ? positionX * scaleXRatio : 150,
+          y: positionY !== undefined ? positionY * scaleYRatio : 150,
+          image: logoImgObj,
+          width: width !== undefined ? width * scaleXRatio : 100,
+          height: height !== undefined ? height * scaleYRatio : 100,
+          rotation: rotation || 0,
+          draggable: true,
+          globalCompositeOperation: 'multiply', // Efecto realismo
+        });
+
+        logoRef.current = logo;
+        layer.add(logo);
+        tr.nodes([logo]); // Seleccionado inicialmente
+
+        const notifyChange = () => {
+          // Escalar de vuelta a la resolución estándar del canvas (500x500 por defecto)
+          const invScaleX = (canvasWidth || 500) / designWidth;
+          const invScaleY = (canvasHeight || 500) / designHeight;
+
+          if (onChange) {
+            onChange({
+              positionX: Math.round(logo.x() * invScaleX),
+              positionY: Math.round(logo.y() * invScaleY),
+              width: Math.round(logo.width() * logo.scaleX() * invScaleX),
+              height: Math.round(logo.height() * logo.scaleY() * invScaleY),
+              rotation: Math.round(logo.rotation()),
+              canvasWidth: canvasWidth || 500,
+              canvasHeight: canvasHeight || 500,
+            });
+          }
+        };
+
+        // Escuchar eventos de interacción
+        logo.on('dragstart transformstart', () => {
+          logo.globalCompositeOperation('source-over');
+          layer.batchDraw();
+        });
+
+        logo.on('dragend transformend', () => {
+          logo.globalCompositeOperation('multiply');
+          layer.batchDraw();
+          notifyChange();
+        });
+
+        logo.on('click tap', () => {
+          tr.nodes([logo]);
+        });
+
+        layer.draw();
+      };
+    }
+
+    // Deseleccionar logo al hacer clic en el fondo del lienzo
     stage.on('click tap', (e) => {
-      if (e.target === stage || e.target.index === 0) { // Index 0 suele ser el fondo
+      if (e.target === stage || e.target.index === 0) {
         tr.nodes([]);
       }
     });
 
     return () => {
+      if (onStageReady) onStageReady(null);
       stage.destroy();
     };
-  }, []); // Array vacío = Solo corre al montar la página
-
-
-  // 2️⃣ DIBUJAR EL LOGO DEL CLIENTE (Se ejecuta cada vez que sube una imagen)
-  useEffect(() => {
-    if (!logoTemporalUrl || !layerRef.current || !transformerRef.current) return;
-
-    const layer = layerRef.current;
-    const tr = transformerRef.current;
-
-    // Si ya había un logo antes, lo borramos para poner el nuevo
-    if (logoRef.current) {
-      logoRef.current.destroy();
-    }
-
-    const logoImgObj = new window.Image();
-    logoImgObj.src = logoTemporalUrl;
-    logoImgObj.onload = () => {
-      const logo = new Konva.Image({
-        x: 250, y: 200, // Aparecerá más o menos al centro
-        image: logoImgObj,
-        width: 150, height: 150, // Tamaño cuadrado inicial
-        draggable: true,
-        globalCompositeOperation: 'multiply' // Efecto realista
-      });
-      
-      logoRef.current = logo; 
-      layer.add(logo);
-
-      // Seleccionar automáticamente el logo recién subido
-      tr.nodes([logo]);
-
-      // Efectos de UX: Quitar realismo al mover, ponerlo al soltar
-      logo.on('dragstart transformstart', () => {
-        logo.globalCompositeOperation('source-over'); 
-        layer.batchDraw();
-      });
-
-      logo.on('dragend transformend', () => {
-        logo.globalCompositeOperation('multiply'); 
-        layer.batchDraw();
-      });
-
-      // Seleccionar el logo al hacerle clic
-      logo.on('click tap', () => {
-        tr.nodes([logo]);
-      });
-
-      layer.draw();
-    };
-  }, [logoTemporalUrl]); // Dependencia: Corre cuando cambia esta variable
-
-
-  // 3️⃣ FUNCIONES DEL COMPONENTE
-  const handleCargarImagen = (evento: React.ChangeEvent<HTMLInputElement>) => {
-    const archivo = evento.target.files?.[0];
-    if (archivo) {
-      // Magia: Crear URL temporal en la memoria RAM del navegador
-      const urlTemporal = URL.createObjectURL(archivo);
-      setLogoTemporalUrl(urlTemporal);
-    }
-  };
-
-  const guardarEspecificaciones = () => {
-    if (logoRef.current && stageRef.current) {
-      const node = logoRef.current;
-      const stage = stageRef.current;
-
-      const datosParaGuardar = {
-        prendaBase: '/prenda-base.png',
-        logoTemporalLocal: logoTemporalUrl, // ESTO SE SUBIRÍA A S3 EN EL FUTURO
-        posicionX: node.x(),
-        posicionY: node.y(),
-        ancho: node.width() * node.scaleX(),
-        alto: node.height() * node.scaleY(),
-        rotacion: node.rotation(),
-        canvasWidth: stage.width(),
-        canvasHeight: stage.height(),
-      };
-      
-      console.log('📦 JSON Listo para enviar (El logo aún no se sube a internet):', datosParaGuardar);
-      alert('Revisa la consola. Las coordenadas y tamaño están listos.');
-    } else {
-      alert('¡Primero sube un logo para tu prenda!');
-    }
-  };
+  }, [baseGarmentUrl, logoUrl, canvasWidth, canvasHeight, backgroundUrl]);
 
   return (
-    <div className="flex flex-col items-center gap-6 p-6 bg-gray-50 rounded-xl max-w-4xl mx-auto">
-      
-      {/* Controles de Subida */}
-      <div className="flex flex-col items-center w-full p-4 border-2 border-dashed border-gray-300 rounded-lg bg-white">
-        <h3 className="text-lg font-semibold text-gray-700 mb-2">1. Sube tu diseño</h3>
-        <input 
-          type="file" 
-          accept="image/png, image/jpeg" 
-          onChange={handleCargarImagen}
-          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer max-w-xs"
-        />
-        <p className="text-xs text-gray-400 mt-2">Formatos: PNG (sin fondo) o JPG. No se guarda hasta cotizar.</p>
-      </div>
-
-      {/* El Lienzo Konva */}
+    <div className="flex flex-col items-center bg-slate-50 border border-slate-200/60 rounded-xl p-4 shadow-sm">
+      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 self-start pl-1 flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+        Visualizador / Posicionador 2D Interactivo
+      </span>
       <div 
         ref={containerRef} 
-        className="border border-gray-200 bg-white rounded-lg shadow-inner overflow-hidden"
+        className="border border-slate-200/80 bg-white rounded-lg shadow-sm overflow-hidden"
       />
-
-      {/* Botón de Guardado */}
-      <button
-        onClick={guardarEspecificaciones}
-        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition shadow-md w-full max-w-xs"
-      >
-        Guardar Cotización
-      </button>
+      <p className="text-[10px] text-slate-400 mt-2 text-center">
+        Arrastra, rota o redimensiona el logo sobre la prenda para actualizar las coordenadas automáticamente.
+      </p>
     </div>
   );
 }
