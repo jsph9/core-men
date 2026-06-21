@@ -101,88 +101,211 @@ async function main() {
   // ============================================================================
   // PASO 3: LOS 20 PRODUCTOS CON SUS VARIANTES Y TÉCNICAS
   // ============================================================================
-  console.log('👕 Paso 3: Generando los 20 Productos Exactos del PDF...');
+  console.log('👕 Paso 3: Generando los 21 Productos Exactos del PDF...');
   
   const productsData = [
     { n: 'Polo Básico Cuello Redondo 20/1', c: 'Polos', f: 'Algodón Jersey 20/1', p: 20, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 8}, {n: 'Serigrafía', p: 2.5}, {n: 'Bordado', p: 12}, {n: 'Vinil Textil', p: 6}],
-      v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}, {c: 'Negro', s: ['S','M','L'], stk: 100}] },
+      v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}, {c: 'Negro', s: ['S','M','L'], stk: 100}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-right.png'
+      ] },
     { n: 'Polo Cuello Camisero (Piqué)', c: 'Polos', f: 'Algodón Piqué', p: 35, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 10}],
-      v: [{c: 'Azul Marino', s: ['M','L'], stk: 50}, {c: 'Rojo', s: ['M','L'], stk: 30}] },
+      v: [{c: 'Azul Marino', s: ['M','L'], stk: 50}, {c: 'Rojo', s: ['M','L'], stk: 30}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-right.png'
+      ] },
     { n: 'Polo Deportivo Dry Fit', c: 'Ropa Deportiva', f: 'Dry Fit / Microfibra', p: 18, comp: '100% Poliéster', g: 'TIPO A',
       t: [{n: 'Sublimación', p: 12}, {n: 'Vinil Textil', p: 5}],
-      v: [{c: 'Blanco', s: ['M','L'], stk: 200}, {c: 'Celeste', s: ['M','L'], stk: 100}] },
+      v: [{c: 'Blanco', s: ['M','L'], stk: 200}, {c: 'Celeste', s: ['M','L'], stk: 100}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-right.png'
+      ] },
     { n: 'Polera con Capucha (Hoodie)', c: 'Poleras', f: 'Franela Reactiva (Perchada)', p: 55, comp: '70% Algodón, 30% Poliéster', g: 'TIPO B',
       t: [{n: 'DTF', p: 18}, {n: 'Bordado', p: 25}, {n: 'Serigrafía', p: 5}],
-      v: [{c: 'Negro', s: ['M','L','XL'], stk: 80}, {c: 'Gris Jaspeado', s: ['M','L','XL'], stk: 40}] },
+      v: [{c: 'Negro', s: ['M','L','XL'], stk: 80}, {c: 'Gris Jaspeado', s: ['M','L','XL'], stk: 40}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-right.png'
+      ] },
     { n: 'Polera Cuello Redondo (Crewneck)', c: 'Poleras', f: 'French Terry', p: 45, comp: '100% Algodón', g: 'TIPO B',
       t: [{n: 'DTF', p: 15}, {n: 'Vinil Textil', p: 10}, {n: 'Bordado', p: 15}],
-      v: [{c: 'Azul Royal', s: ['M','L','XL'], stk: 50}] },
+      v: [{c: 'Azul Royal', s: ['M','L','XL'], stk: 50}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-right.png'
+      ] },
     { n: 'Casaca Cortavientos', c: 'Casacas', f: 'Taslán', p: 65, comp: '100% Nylon/Poliéster', g: 'TIPO C',
       t: [{n: 'Vinil Textil', p: 8}, {n: 'Bordado', p: 18}],
-      v: [{c: 'Negro', s: ['M','L'], stk: 30}, {c: 'Azul Marino', s: ['M','L'], stk: 20}] },
+      v: [{c: 'Negro', s: ['M','L'], stk: 30}, {c: 'Azul Marino', s: ['M','L'], stk: 20}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-right.png'
+      ] },
     { n: 'Casaca Bomber', c: 'Casacas', f: 'Taslán (con forro)', p: 85, comp: '100% Poliéster', g: 'TIPO C',
       t: [{n: 'Bordado', p: 22}, {n: 'Vinil Textil', p: 12}],
-      v: [{c: 'Verde Militar', s: ['M','L','XL'], stk: 25}] },
+      v: [{c: 'Verde Militar', s: ['M','L','XL'], stk: 25}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-right.png'
+      ] },
     { n: 'Jogger de Franela', c: 'Pantalones y Joggers', f: 'Franela Reactiva (Perchada)', p: 40, comp: '100% Algodón', g: 'TIPO D',
       t: [{n: 'DTF', p: 6}, {n: 'Serigrafía', p: 2}],
-      v: [{c: 'Gris Jaspeado', s: ['S','M','L'], stk: 60}, {c: 'Negro', s: ['S'], stk: 0}] }, // Agotado
+      v: [{c: 'Gris Jaspeado', s: ['S','M','L'], stk: 60}, {c: 'Negro', s: ['S'], stk: 0}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-right.png'
+      ] },
     { n: 'Short Deportivo', c: 'Ropa Deportiva', f: 'Taslán', p: 25, comp: '100% Poliéster', g: 'TIPO D',
       t: [{n: 'Vinil Textil', p: 4}, {n: 'Sublimación', p: 5}],
-      v: [{c: 'Negro', s: ['M','L'], stk: 100}, {c: 'Azul Marino', s: ['M','L'], stk: 50}] },
+      v: [{c: 'Negro', s: ['M','L'], stk: 100}, {c: 'Azul Marino', s: ['M','L'], stk: 50}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-right.png'
+      ] },
     { n: 'Gorra Trucker (Malla)', c: 'Gorras y Accesorios', f: 'Poliéster Spandex (Malla)', p: 15, comp: 'Frontal Poliéster / Malla Nylon', g: 'TIPO A',
       t: [{n: 'Sublimación', p: 4}, {n: 'DTF', p: 5}],
-      v: [{c: 'Blanco', s: ['M'], stk: 300}, {c: 'Negro', s: ['M'], stk: 200}] },
+      v: [{c: 'Blanco', s: ['M'], stk: 300}, {c: 'Negro', s: ['M'], stk: 200}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-right.png'
+      ] },
     { n: 'Polo Oversize Urbano', c: 'Polos', f: 'Algodón Jersey 30/1', p: 30, comp: '100% Algodón Peinado', g: 'TIPO A',
       t: [{n: 'DTF', p: 15}, {n: 'Serigrafía', p: 4}],
-      v: [{c: 'Beige (Arena)', s: ['M','L','XL'], stk: 40}, {c: 'Negro', s: ['M','L','XL'], stk: 70}] },
+      v: [{c: 'Beige (Arena)', s: ['M','L','XL'], stk: 40}, {c: 'Negro', s: ['M','L','XL'], stk: 70}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-right.png'
+      ] },
     { n: 'Polo Crop Top Mujer', c: 'Polos', f: 'Algodón Jersey 20/1', p: 18, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 7}, {n: 'Bordado', p: 10}],
-      v: [{c: 'Blanco', s: ['S','M'], stk: 80}, {c: 'Fucsia', s: ['S','M'], stk: 60}] },
+      v: [{c: 'Blanco', s: ['S','M'], stk: 80}, {c: 'Fucsia', s: ['S','M'], stk: 60}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-right.png'
+      ] },
     { n: 'Polera con Cierre (Zip-up)', c: 'Poleras', f: 'French Terry', p: 60, comp: '100% Algodón', g: 'TIPO B',
       t: [{n: 'Bordado', p: 12}, {n: 'DTF', p: 18}],
-      v: [{c: 'Gris Jaspeado', s: ['M','L'], stk: 40}, {c: 'Azul Marino', s: ['M','L'], stk: 30}] },
+      v: [{c: 'Gris Jaspeado', s: ['M','L'], stk: 40}, {c: 'Azul Marino', s: ['M','L'], stk: 30}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-right.png'
+      ] },
     { n: 'Casaca Denim (Jean)', c: 'Casacas', f: 'Denim', p: 95, comp: '100% Algodón', g: 'TIPO C',
       t: [{n: 'Bordado', p: 30}, {n: 'DTF', p: 20}],
-      v: [{c: 'Celeste', s: ['M','L','XL'], stk: 20}] },
+      v: [{c: 'Celeste', s: ['M','L','XL'], stk: 20}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-right.png'
+      ] },
     { n: 'Polo Manga Larga', c: 'Polos', f: 'Algodón Jersey 20/1', p: 25, comp: '100% Algodón', g: 'TIPO B',
       t: [{n: 'Serigrafía', p: 3.5}, {n: 'DTF', p: 12}],
-      v: [{c: 'Negro', s: ['M','L'], stk: 90}, {c: 'Blanco', s: ['M','L'], stk: 80}] },
+      v: [{c: 'Negro', s: ['M','L'], stk: 90}, {c: 'Blanco', s: ['M','L'], stk: 80}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-right.png'
+      ] },
     { n: 'Bividí Deportivo', c: 'Ropa Deportiva', f: 'Dry Fit / Microfibra', p: 15, comp: '100% Poliéster', g: 'TIPO A',
       t: [{n: 'Sublimación', p: 6}, {n: 'Vinil Textil', p: 4}],
-      v: [{c: 'Rojo', s: ['S','M','L'], stk: 150}] },
+      v: [{c: 'Rojo', s: ['S','M','L'], stk: 150}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-right.png'
+      ] },
     { n: 'Pantalón Cargo', c: 'Pantalones y Joggers', f: 'Taslán', p: 50, comp: '100% Poliéster', g: 'TIPO D',
       t: [{n: 'Bordado', p: 10}, {n: 'DTF', p: 8}],
-      v: [{c: 'Verde Militar', s: ['M','L'], stk: 40}, {c: 'Negro', s: ['M','L'], stk: 50}] },
+      v: [{c: 'Verde Militar', s: ['M','L'], stk: 40}, {c: 'Negro', s: ['M','L'], stk: 50}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-right.png'
+      ] },
     { n: 'Polera Crop Mujer', c: 'Poleras', f: 'Franela Reactiva (Perchada)', p: 45, comp: '100% Algodón', g: 'TIPO B',
       t: [{n: 'DTF', p: 9}, {n: 'Bordado', p: 12}],
-      v: [{c: 'Rosado', s: ['S','M'], stk: 30}, {c: 'Turquesa', s: ['S','M'], stk: 20}] },
+      v: [{c: 'Rosado', s: ['S','M'], stk: 30}, {c: 'Turquesa', s: ['S','M'], stk: 20}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-right.png'
+      ] },
     { n: 'Gorra Drill Básica', c: 'Gorras y Accesorios', f: 'Algodón Piqué (Drill)', p: 18, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 6}],
-      v: [{c: 'Negro', s: ['M'], stk: 120}, {c: 'Azul Marino', s: ['M'], stk: 90}, {c: 'Rojo', s: ['M'], stk: 60}, {c: 'Blanco', s: ['M'], stk: 50}] },
+      v: [{c: 'Negro', s: ['M'], stk: 120}, {c: 'Azul Marino', s: ['M'], stk: 90}, {c: 'Rojo', s: ['M'], stk: 60}, {c: 'Blanco', s: ['M'], stk: 50}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-right.png'
+      ] },
     { n: 'Polo Cuello V', c: 'Polos', f: 'Algodón Jersey 30/1', p: 22, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 8}, {n: 'Serigrafía', p: 2.5}],
-      v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}] },
+      v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-right.png'
+      ] },
     { id: 'dc6d8150-864e-4739-9328-4c12d5a7bec2', n: 'Polo Camisero Negro Clásico', c: 'Polos', f: 'Algodón Piqué', p: 35, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 10}],
-      v: [{c: 'Negro', s: ['S','M','L','XL'], stk: 80}] }
+      v: [{c: 'Negro', s: ['S','M','L','XL'], stk: 80}],
+      imgs: [
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-front.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-back.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-left.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-right.png'
+      ] }
   ];
 
   for (const p of productsData as any[]) {
-    const slug = p.n.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const prod = await prisma.product.create({
       data: {
         ...(p.id ? { id: p.id } : {}),
         name: p.n, basePrice: p.p, fiberComposition: p.comp, sizeGuideText: p.g, careInstructions: 'Lavar según etiqueta',
         categoryId: getId(dbCats, 'name', p.c)!, fabricId: getId(dbFabs, 'value', p.f)!,
         images: {
-          create: [
-            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-front.png`, isPrimary: true },
-            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-back.png`, isPrimary: false },
-            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-left.png`, isPrimary: false },
-            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-right.png`, isPrimary: false }
-          ]
+          create: p.imgs.map((url: string, index: number) => ({
+            url,
+            isPrimary: index === 0
+          }))
         }
       }
     });
