@@ -31,12 +31,12 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
     queryFn: () => apiGet("/api/auth/me"),
     retry: false,
   });
-
   useEffect(() => {
     if (!isLoading && (!me || me.role !== "MERCHANT")) {
       router.replace("/auth/login");
     }
   }, [isLoading, me, router]);
+
 
   const handleLogout = async () => {
     await apiPost("/api/auth/logout", {});
@@ -52,7 +52,6 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
       </div>
     );
   }
-
   const activeRoute = NAV_ITEMS.find(item => pathname?.startsWith(item.href));
   const pageTitle = activeRoute ? activeRoute.label : "Panel de Vendedor";
 
