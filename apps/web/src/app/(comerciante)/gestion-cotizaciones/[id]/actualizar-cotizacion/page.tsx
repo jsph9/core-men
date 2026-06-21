@@ -111,6 +111,7 @@ export default function ActualizarCotizacion() {
   const [activeBgUrl, setActiveBgUrl] = useState<string>("https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/whitewall.jpg");
   const [zoom, setZoom] = useState<number>(1.0);
   const [mode, setMode] = useState<"select" | "pan">("select");
+  const [isSimulationActive, setIsSimulationActive] = useState<boolean>(true);
 
   // Fetch initial quote detail
   const { data: quote, isLoading } = useQuery<any>({
@@ -905,6 +906,7 @@ export default function ActualizarCotizacion() {
                         canvasHeight={designs[activeDesignIdx].canvasHeight}
                         zoom={zoom}
                         mode={mode}
+                        isSimulationActive={isSimulationActive}
                         onChange={(updates) => {
                           setDesigns(prev => {
                             const copy = [...prev];
@@ -1250,7 +1252,8 @@ export default function ActualizarCotizacion() {
                               type="checkbox"
                               id="efectoTelaMock"
                               className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                              defaultChecked
+                              checked={isSimulationActive}
+                              onChange={(e) => setIsSimulationActive(e.target.checked)}
                             />
                             <label htmlFor="efectoTelaMock" className="text-xs font-extrabold text-slate-700 cursor-pointer select-none">
                               Efecto de Tela

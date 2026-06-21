@@ -16,6 +16,7 @@ interface CustomizerProps {
   backgroundUrl?: string;
   zoom?: number;
   mode?: 'select' | 'pan';
+  isSimulationActive?: boolean;
   onStageReady?: (stage: Konva.Stage | null) => void;
   onChange?: (updates: {
     positionX: number;
@@ -27,6 +28,72 @@ interface CustomizerProps {
     canvasHeight: number;
   }) => void;
 }
+
+// Procesador Gráfico: Genera el mapa de sombras y calcula la luminancia promedio de la tela
+const processShadowMask = (img: HTMLImageElement, url: string): { url: string; luminance: number } => {
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { url: url, luminance: 128 };
+
+  ctx.drawImage(img, 0, 0);
+  try {
+    const imgData = ctx.getImageData(0, 0, img.width, img.height);
+    const data = imgData.data;
+
+    // Calcular luminancia promedio (excluyendo fondo transparente)
+    let totalR = 0, totalG = 0, totalB = 0, count = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a > 30) {
+        totalR += data[i];
+        totalG += data[i + 1];
+        totalB += data[i + 2];
+        count++;
+      }
+    }
+
+    const avgR = count > 0 ? totalR / count : 128;
+    const avgG = count > 0 ? totalG / count : 128;
+    const avgB = count > 0 ? totalB / count : 128;
+    const Y = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
+
+    // Generar mapa de sombras y brillos de alto contraste
+    for (let i = 0; i < data.length; i += 4) {
+      const a = data[i + 3];
+      if (a > 0) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const pixelY = 0.299 * r + 0.587 * g + 0.114 * b;
+        const diff = pixelY - Y;
+
+        if (diff < 0) {
+          // Pliegues/Sombras oscuras
+          const intensity = Math.min(255, Math.abs(diff) * 2.5);
+          data[i] = 0;
+          data[i + 1] = 0;
+          data[i + 2] = 0;
+          data[i + 3] = Math.round((a / 255) * intensity);
+        } else {
+          // Brillos/Iluminación
+          const intensity = Math.min(255, diff * 3.0);
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+          data[i + 3] = Math.round((a / 255) * intensity);
+        }
+      }
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return { url: canvas.toDataURL(), luminance: Y };
+  } catch (err) {
+    console.error('Error procesando imagen para sombras:', err);
+    return { url: url, luminance: 128 };
+  }
+};
 
 export default function Customizer({
   baseGarmentUrl,
@@ -41,6 +108,7 @@ export default function Customizer({
   backgroundUrl,
   zoom,
   mode,
+  isSimulationActive = true,
   onStageReady,
   onChange,
 }: CustomizerProps) {
@@ -49,6 +117,8 @@ export default function Customizer({
   const layerRef = useRef<Konva.Layer | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const logoRef = useRef<Konva.Image | null>(null);
+  const shadowOverlayRef = useRef<Konva.Image | null>(null);
+  const shadowMaskCacheRef = useRef<{ [key: string]: { url: string; luminance: number } }>({});
 
   const isDraggingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
@@ -81,6 +151,15 @@ export default function Customizer({
     stage.add(layer);
     layerRef.current = layer;
 
+    // Crear grupos para mantener el orden de apilamiento de manera estricta
+    const bgGroup = new Konva.Group();
+    const logoGroup = new Konva.Group();
+    const shadowGroup = new Konva.Group();
+
+    layer.add(bgGroup);
+    layer.add(logoGroup);
+    layer.add(shadowGroup);
+
     const tr = new Konva.Transformer({
       enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
       keepRatio: true,
@@ -94,6 +173,7 @@ export default function Customizer({
 
     // Cargar la prenda base (el fondo del canvas queda transparente)
     const prendaImgObj = new window.Image();
+    prendaImgObj.crossOrigin = 'anonymous';
     prendaImgObj.src = baseGarmentUrl || '/prenda-base.png';
     prendaImgObj.onerror = () => {
       if (prendaImgObj.src !== window.location.origin + '/prenda-base.png') {
@@ -121,13 +201,62 @@ export default function Customizer({
         height: newHeight,
         listening: false, // Estático
       });
-      layer.add(bg);
+      bgGroup.add(bg);
+
+      // Procesar y cachear el mapa de sombras
+      let cachedMask = shadowMaskCacheRef.current[baseGarmentUrl || ''];
+      if (!cachedMask && baseGarmentUrl) {
+        cachedMask = processShadowMask(prendaImgObj, baseGarmentUrl);
+        shadowMaskCacheRef.current[baseGarmentUrl] = cachedMask;
+      }
+
+      if (cachedMask) {
+        const shadowOverlayObj = new window.Image();
+        shadowOverlayObj.crossOrigin = 'anonymous';
+        shadowOverlayObj.src = cachedMask.url;
+        shadowOverlayObj.onload = () => {
+          if (!stageRef.current) return;
+
+          const shadowImg = new Konva.Image({
+            x: x,
+            y: y,
+            image: shadowOverlayObj,
+            width: newWidth,
+            height: newHeight,
+            listening: false,
+            visible: !!isSimulationActive,
+          });
+
+          // Adaptación dinámica de mezcla según la luminancia de la tela
+          const Y = cachedMask!.luminance;
+          if (Y > 170) {
+            // Telas claras: multiplicar sombras fuertes
+            shadowImg.globalCompositeOperation('multiply');
+            shadowImg.opacity(0.8);
+          } else if (Y > 80) {
+            // Telas coloridas: multiplicar con menor impacto
+            shadowImg.globalCompositeOperation('multiply');
+            shadowImg.opacity(0.5);
+          } else {
+            // Telas oscuras: aclarar brillos/pliegues
+            shadowImg.globalCompositeOperation('screen');
+            shadowImg.opacity(0.65);
+          }
+
+          shadowOverlayRef.current = shadowImg;
+          shadowGroup.add(shadowImg);
+          tr.moveToTop();
+          layer.draw();
+        };
+      }
+
       layer.draw();
     };
 
     // Cargar el logo del cliente si está disponible
     if (logoUrl) {
       const logoImgObj = new window.Image();
+      logoImgObj.crossOrigin = 'anonymous';
       logoImgObj.src = logoUrl;
       logoImgObj.onerror = () => {};
       logoImgObj.onload = () => {
@@ -177,11 +306,11 @@ export default function Customizer({
           height: initialHeight * scaleYRatio,
           rotation: rotation || 0,
           draggable: true,
-          globalCompositeOperation: 'multiply',
+          globalCompositeOperation: 'source-atop', // Nivel 2: Recorte por GPU sobre la prenda base
         });
 
         logoRef.current = logo;
-        layer.add(logo);
+        logoGroup.add(logo);
         tr.nodes([logo]);
 
         const notifyChange = () => {
@@ -202,12 +331,14 @@ export default function Customizer({
         };
 
         logo.on('dragstart transformstart', () => {
+          // Remover temporalmente el recorte al editar para optimizar FPS
           logo.globalCompositeOperation('source-over');
           layer.batchDraw();
         });
 
         logo.on('dragend transformend', () => {
-          logo.globalCompositeOperation('multiply');
+          // Re-aplicar el recorte al soltar el elemento
+          logo.globalCompositeOperation('source-atop');
           layer.batchDraw();
           notifyChange();
         });
@@ -231,6 +362,16 @@ export default function Customizer({
       stage.destroy();
     };
   }, [baseGarmentUrl, logoUrl, canvasWidth, canvasHeight]);
+
+  // Alternar la visibilidad de la capa de simulación de sombras en tiempo real
+  useEffect(() => {
+    if (shadowOverlayRef.current) {
+      shadowOverlayRef.current.visible(!!isSimulationActive);
+      if (layerRef.current) {
+        layerRef.current.batchDraw();
+      }
+    }
+  }, [isSimulationActive]);
 
   // Manejar el cambio dinámico del nivel de zoom del canvas sin reconstruir el stage
   useEffect(() => {
