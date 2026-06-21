@@ -572,9 +572,9 @@ export default function ActualizarCotizacion() {
                       >
                         <div>
                           <div className="flex gap-3">
-                            <div className="w-14 h-14 bg-slate-100 rounded-lg relative overflow-hidden shrink-0 border border-slate-200/50 flex items-center justify-center text-2xl">
+                            <div className="w-14 h-14 bg-slate-100 rounded-lg relative overflow-hidden shrink-0 border border-slate-200/50 flex items-center justify-center text-2xl p-1 bg-white">
                               {prod.images?.[0]?.url ? (
-                                <img src={prod.images[0].url} alt={prod.name} className="object-cover w-full h-full" />
+                                <img src={prod.images[0].url} alt={prod.name} className="object-contain w-full h-full" />
                               ) : (
                                 "👕"
                               )}
@@ -661,12 +661,12 @@ export default function ActualizarCotizacion() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pl-2">
                   {/* Imagen principal y Galería */}
                   <div className="md:col-span-1 flex flex-col gap-3">
-                    <div className="w-full aspect-square bg-white border border-slate-200/70 rounded-xl overflow-hidden shadow-sm relative flex items-center justify-center text-7xl">
+                    <div className="w-full aspect-square bg-white border border-slate-200/70 rounded-xl overflow-hidden shadow-sm relative flex items-center justify-center text-7xl p-3">
                       {productImages?.[activeImageIndex]?.url ? (
                         <img 
                           src={productImages[activeImageIndex].url} 
                           alt={`${selectedProduct.name} - Imagen ${activeImageIndex + 1}`} 
-                          className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                          className="object-contain w-full h-full hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         "👕"
@@ -683,13 +683,13 @@ export default function ActualizarCotizacion() {
                               key={idx}
                               type="button"
                               onClick={() => setActiveImageIndex(idx)}
-                              className={`w-12 h-12 rounded-lg border-2 overflow-hidden bg-white transition-all shadow-sm shrink-0 ${
+                              className={`w-12 h-12 rounded-lg border-2 overflow-hidden bg-white transition-all shadow-sm shrink-0 p-1 flex items-center justify-center ${
                                 isImgActive 
                                   ? "border-blue-500 ring-2 ring-blue-500/10 scale-105" 
                                   : "border-slate-200 hover:border-slate-300"
                               }`}
                             >
-                              <img src={img.url} alt={`Miniatura ${idx + 1}`} className="object-cover w-full h-full" />
+                              <img src={img.url} alt={`Miniatura ${idx + 1}`} className="object-contain max-w-full max-h-full" />
                             </button>
                           );
                         })}
