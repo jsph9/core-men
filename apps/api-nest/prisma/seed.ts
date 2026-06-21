@@ -275,23 +275,23 @@ async function main() {
         'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-left.png',
         'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-right.png'
       ] },
-    { n: 'Polo Cuello V', c: 'Polos', f: 'Algodón Jersey 30/1', p: 22, comp: '100% Algodón', g: 'TIPO A',
+    { n: 'Polo Camisero con Aberturas', c: 'Polos', f: 'Algodón Jersey 30/1', p: 22, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 8}, {n: 'Serigrafía', p: 2.5}],
       v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-v-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782055279801-777068400.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782055281183-250990858.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782055281537-448338553.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782055281744-767486717.png'
       ] },
-    { id: 'dc6d8150-864e-4739-9328-4c12d5a7bec2', n: 'Polo Camisero Negro Clásico', c: 'Polos', f: 'Algodón Piqué', p: 35, comp: '100% Algodón', g: 'TIPO A',
+    { id: 'dc6d8150-864e-4739-9328-4c12d5a7bec2', n: 'Polo Camisero Clásico', c: 'Polos', f: 'Algodón Piqué', p: 35, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 10}],
       v: [{c: 'Negro', s: ['S','M','L','XL'], stk: 80}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-camisero-negro-clasico-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998161-631224673.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998163-256816625.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998163-362873642.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998164-848136159.png'
       ] }
   ];
 
@@ -678,7 +678,7 @@ async function main() {
       estimatedPrice: 350.00,
       items: { 
         create: [
-          { productVariantId: await getVariant('Polo Camisero Negro Clásico', 'Negro', 'M'), quantity: 10 }
+          { productVariantId: await getVariant('Polo Camisero Clásico', 'Negro', 'M'), quantity: 10 }
         ] 
       },
       designs: { 

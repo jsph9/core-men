@@ -64,11 +64,16 @@ const getGarmentImageForPlacement = (placement: string, product: any, defaultUrl
     return primary?.url || product.images[0]?.url || defaultUrl;
   }
   if (placement === "BACK") {
-    const secondary = product.images.find((img: any) => !img.isPrimary);
-    return secondary?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
+    const backImg = product.images.find((img: any) => img.url.includes("back") || img.url.includes("espalda"));
+    return backImg?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
   }
-  if (placement === "LEFTSLEEVE" || placement === "RIGHTSLEEVE") {
-    return product.images[2]?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
+  if (placement === "LEFTSLEEVE") {
+    const leftImg = product.images.find((img: any) => img.url.includes("left") || img.url.includes("izq"));
+    return leftImg?.url || product.images[2]?.url || product.images[0]?.url || defaultUrl;
+  }
+  if (placement === "RIGHTSLEEVE") {
+    const rightImg = product.images.find((img: any) => img.url.includes("right") || img.url.includes("der"));
+    return rightImg?.url || product.images[3]?.url || product.images[0]?.url || defaultUrl;
   }
   return defaultUrl;
 };
