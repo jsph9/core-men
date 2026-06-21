@@ -1129,14 +1129,14 @@ export default function ActualizarCotizacion() {
                       )}
                     </div>
 
-                    {/* CATEGORÍA 2: Prenda */}
+                    {/* CATEGORÍA 2: Vista */}
                     <div className="border border-slate-200/80 rounded-2xl overflow-hidden bg-white shadow-sm transition-all hover:border-slate-300">
                       <button
                         type="button"
                         onClick={() => setOpenSection(openSection === "Garment" ? null : "Garment")}
                         className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors text-left"
                       >
-                        <span className="font-extrabold text-slate-800 text-sm">Prenda</span>
+                        <span className="font-extrabold text-slate-800 text-sm">Vista</span>
                         <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${openSection === "Garment" ? "transform rotate-90" : ""}`} />
                       </button>
                       {openSection === "Garment" && (
