@@ -170,12 +170,20 @@ async function main() {
   ];
 
   for (const p of productsData as any[]) {
+    const slug = p.n.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const prod = await prisma.product.create({
       data: {
         ...(p.id ? { id: p.id } : {}),
         name: p.n, basePrice: p.p, fiberComposition: p.comp, sizeGuideText: p.g, careInstructions: 'Lavar según etiqueta',
         categoryId: getId(dbCats, 'name', p.c)!, fabricId: getId(dbFabs, 'value', p.f)!,
-        images: { create: [{ url: `https://placehold.co/800x800/FFFFFF/000000.png?text=${p.n.replace(/ /g, '+')}`, isPrimary: true }] }
+        images: {
+          create: [
+            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-front.png`, isPrimary: true },
+            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-back.png`, isPrimary: false },
+            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-left.png`, isPrimary: false },
+            { url: `https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/${slug}-right.png`, isPrimary: false }
+          ]
+        }
       }
     });
 
