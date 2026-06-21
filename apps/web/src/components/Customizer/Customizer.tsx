@@ -14,6 +14,8 @@ interface CustomizerProps {
   canvasWidth?: number;
   canvasHeight?: number;
   backgroundUrl?: string;
+  zoom?: number;
+  mode?: 'select' | 'pan';
   onStageReady?: (stage: Konva.Stage | null) => void;
   onChange?: (updates: {
     positionX: number;
@@ -37,6 +39,8 @@ export default function Customizer({
   canvasWidth,
   canvasHeight,
   backgroundUrl,
+  zoom,
+  mode,
   onStageReady,
   onChange,
 }: CustomizerProps) {
@@ -45,6 +49,10 @@ export default function Customizer({
   const layerRef = useRef<Konva.Layer | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const logoRef = useRef<Konva.Image | null>(null);
+
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const currentTranslateRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -61,6 +69,14 @@ export default function Customizer({
     stageRef.current = stage;
     if (onStageReady) onStageReady(stage);
 
+    // Aplicar escala y centrado iniciales de zoom si se provee
+    const initialZoom = zoom || 1;
+    stage.scale({ x: initialZoom, y: initialZoom });
+    stage.position({
+      x: (designWidth * (1 - initialZoom)) / 2,
+      y: (designHeight * (1 - initialZoom)) / 2,
+    });
+
     const layer = new Konva.Layer();
     stage.add(layer);
     layerRef.current = layer;
@@ -69,7 +85,6 @@ export default function Customizer({
       enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
       keepRatio: true,
       boundBoxFunc: (oldBox, newBox) => {
-        // Límite mínimo para evitar voltear o achicar demasiado el diseño
         if (newBox.width < 10 || newBox.height < 10) return oldBox;
         return newBox;
       },
@@ -77,33 +92,10 @@ export default function Customizer({
     layer.add(tr);
     transformerRef.current = tr;
 
-    // Cargar fondo si existe
-    const bgImgObj = new window.Image();
-    let bgRect: Konva.Image | null = null;
-    if (backgroundUrl) {
-      bgImgObj.src = backgroundUrl;
-      bgImgObj.onerror = () => {};
-      bgImgObj.onload = () => {
-        if (!stageRef.current) return;
-        bgRect = new Konva.Image({
-          x: 0,
-          y: 0,
-          image: bgImgObj,
-          width: designWidth,
-          height: designHeight,
-          listening: false,
-        });
-        layer.add(bgRect);
-        bgRect.moveToBottom();
-        layer.draw();
-      };
-    }
-
-    // Cargar la prenda base
+    // Cargar la prenda base (el fondo del canvas queda transparente)
     const prendaImgObj = new window.Image();
     prendaImgObj.src = baseGarmentUrl || '/prenda-base.png';
     prendaImgObj.onerror = () => {
-      // Si la imagen específica falla en cargar, cargamos la prenda base de respaldo por defecto
       if (prendaImgObj.src !== window.location.origin + '/prenda-base.png') {
         prendaImgObj.src = '/prenda-base.png';
       }
@@ -130,9 +122,6 @@ export default function Customizer({
         listening: false, // Estático
       });
       layer.add(bg);
-      if (bgRect) {
-        bgRect.moveToBottom();
-      }
       layer.draw();
     };
 
@@ -140,11 +129,8 @@ export default function Customizer({
     if (logoUrl) {
       const logoImgObj = new window.Image();
       logoImgObj.src = logoUrl;
-      logoImgObj.onerror = () => {
-        // Ignorar error de carga si el logo no está en la ubicación indicada
-      };
+      logoImgObj.onerror = () => {};
       logoImgObj.onload = () => {
-        // Escalar coordenadas relativas al lienzo de previsualización (520x520)
         const scaleXRatio = designWidth / (canvasWidth || 500);
         const scaleYRatio = designHeight / (canvasHeight || 500);
 
@@ -191,15 +177,14 @@ export default function Customizer({
           height: initialHeight * scaleYRatio,
           rotation: rotation || 0,
           draggable: true,
-          globalCompositeOperation: 'multiply', // Efecto realismo
+          globalCompositeOperation: 'multiply',
         });
 
         logoRef.current = logo;
         layer.add(logo);
-        tr.nodes([logo]); // Seleccionado inicialmente
+        tr.nodes([logo]);
 
         const notifyChange = () => {
-          // Escalar de vuelta a la resolución estándar del canvas (500x500 por defecto)
           const invScaleX = (canvasWidth || 500) / designWidth;
           const invScaleY = (canvasHeight || 500) / designHeight;
 
@@ -216,7 +201,6 @@ export default function Customizer({
           }
         };
 
-        // Escuchar eventos de interacción
         logo.on('dragstart transformstart', () => {
           logo.globalCompositeOperation('source-over');
           layer.batchDraw();
@@ -236,9 +220,8 @@ export default function Customizer({
       };
     }
 
-    // Deseleccionar logo al hacer clic en el fondo del lienzo
     stage.on('click tap', (e) => {
-      if (e.target === stage || e.target.index === 0) {
+      if (e.target === stage) {
         tr.nodes([]);
       }
     });
@@ -247,21 +230,138 @@ export default function Customizer({
       if (onStageReady) onStageReady(null);
       stage.destroy();
     };
-  }, [baseGarmentUrl, logoUrl, canvasWidth, canvasHeight, backgroundUrl]);
+  }, [baseGarmentUrl, logoUrl, canvasWidth, canvasHeight]);
+
+  // Manejar el cambio dinámico del nivel de zoom del canvas sin reconstruir el stage
+  useEffect(() => {
+    if (!stageRef.current) return;
+    const stage = stageRef.current;
+    const z = zoom || 1;
+    stage.scale({ x: z, y: z });
+    const designWidth = 520;
+    const designHeight = 520;
+    stage.position({
+      x: (designWidth * (1 - z)) / 2,
+      y: (designHeight * (1 - z)) / 2,
+    });
+    stage.batchDraw();
+  }, [zoom]);
+
+  // Restablecer la traslación de la prenda al cambiar de vista o de nivel de zoom
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el) {
+      el.style.transform = 'translate(0px, 0px)';
+      currentTranslateRef.current = { x: 0, y: 0 };
+    }
+  }, [zoom, baseGarmentUrl]);
+
+  // Manejar el cambio de modo (selección vs mano)
+  useEffect(() => {
+    if (!stageRef.current || !layerRef.current || !transformerRef.current) return;
+    const stage = stageRef.current;
+    const tr = transformerRef.current;
+    const isPan = mode === 'pan';
+
+    // Desactivar el arrastre de Konva (usaremos arrastre DOM del canvas completo)
+    stage.draggable(false);
+    stage.container().style.cursor = isPan ? 'grab' : 'default';
+
+    if (isPan) {
+      tr.nodes([]); // Deseleccionar
+    } else {
+      if (logoRef.current) {
+        tr.nodes([logoRef.current]); // Re-seleccionar el logo si existe
+      }
+    }
+
+    if (logoRef.current) {
+      logoRef.current.draggable(!isPan);
+    }
+    layerRef.current.draw();
+  }, [mode]);
+
+  // Controlador de arrastre del elemento HTML del Canvas completo (Mano / Pan)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (mode !== 'pan') return;
+      isDraggingRef.current = true;
+      startPosRef.current = { x: e.clientX, y: e.clientY };
+      el.style.cursor = 'grabbing';
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || mode !== 'pan') return;
+      const dx = e.clientX - startPosRef.current.x;
+      const dy = e.clientY - startPosRef.current.y;
+      
+      const newX = currentTranslateRef.current.x + dx;
+      const newY = currentTranslateRef.current.y + dy;
+
+      el.style.transform = `translate(${newX}px, ${newY}px)`;
+    };
+
+    const handleMouseUp = () => {
+      if (!isDraggingRef.current || mode !== 'pan') return;
+      isDraggingRef.current = false;
+      el.style.cursor = 'grab';
+      
+      const style = window.getComputedStyle(el);
+      const matrix = new WebKitCSSMatrix(style.transform);
+      currentTranslateRef.current = { x: matrix.m41, y: matrix.m42 };
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (mode !== 'pan' || e.touches.length === 0) return;
+      isDraggingRef.current = true;
+      startPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || mode !== 'pan' || e.touches.length === 0) return;
+      const dx = e.touches[0].clientX - startPosRef.current.x;
+      const dy = e.touches[0].clientY - startPosRef.current.y;
+      
+      const newX = currentTranslateRef.current.x + dx;
+      const newY = currentTranslateRef.current.y + dy;
+
+      el.style.transform = `translate(${newX}px, ${newY}px)`;
+    };
+
+    const handleTouchEnd = () => {
+      if (!isDraggingRef.current || mode !== 'pan') return;
+      isDraggingRef.current = false;
+      const style = window.getComputedStyle(el);
+      const matrix = new WebKitCSSMatrix(style.transform);
+      currentTranslateRef.current = { x: matrix.m41, y: matrix.m42 };
+    };
+
+    el.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    el.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      el.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+
+      el.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [mode]);
 
   return (
-    <div className="w-full flex flex-col items-center bg-slate-50 border border-slate-200/60 rounded-xl p-4 shadow-sm">
-      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 self-start pl-1 flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-        Visualizador / Posicionador 2D Interactivo
-      </span>
-      <div 
-        ref={containerRef} 
-        className="border border-slate-200/80 bg-white rounded-lg shadow-sm overflow-hidden"
-      />
-      <p className="text-[10px] text-slate-400 mt-2 text-center">
-        Arrastra, rota o redimensiona el logo sobre la prenda para actualizar las coordenadas automáticamente.
-      </p>
-    </div>
+    <div 
+      ref={containerRef} 
+      className="relative overflow-visible pointer-events-auto transition-transform duration-75 ease-out"
+    />
   );
 }
