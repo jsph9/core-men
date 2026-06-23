@@ -398,27 +398,17 @@ export class QuotesService {
     await this.prisma.quote.update({
       where: { id },
       data: {
-        status: QuoteMacroStatus.CANCELLED,
         viabilityStatus: ViabilityStatus.NONVIABLE,
         unfeasibleReason: data.unfeasibleReason,
         whatsappUrl,
         statusHistory: {
-          create: [
-            {
-              changedField: 'STATUS',
-              oldValue: quote.status,
-              newValue: 'CANCELLED',
-              changedBy: merchantId,
-              note: 'Marcado inviable por el comerciante',
-            },
-            {
-              changedField: 'VIABILITY',
-              oldValue: quote.viabilityStatus,
-              newValue: ViabilityStatus.NONVIABLE,
-              changedBy: merchantId,
-              note: `Motivo técnico: ${data.unfeasibleReason}`,
-            }
-          ],
+          create: {
+            changedField: 'VIABILITY',
+            oldValue: quote.viabilityStatus,
+            newValue: ViabilityStatus.NONVIABLE,
+            changedBy: merchantId,
+            note: `Motivo técnico: ${data.unfeasibleReason}`,
+          },
         },
       },
     });
