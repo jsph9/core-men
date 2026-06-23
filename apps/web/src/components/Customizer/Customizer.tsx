@@ -17,6 +17,7 @@ interface CustomizerProps {
   zoom?: number;
   mode?: 'select' | 'pan';
   isSimulationActive?: boolean;
+  readOnly?: boolean;
   onStageReady?: (stage: Konva.Stage | null) => void;
   onChange?: (updates: {
     positionX: number;
@@ -109,6 +110,7 @@ export default function Customizer({
   zoom,
   mode,
   isSimulationActive = true,
+  readOnly = false,
   onStageReady,
   onChange,
 }: CustomizerProps) {
@@ -287,6 +289,9 @@ export default function Customizer({
         return newBox;
       },
     });
+    if (readOnly) {
+      tr.visible(false);
+    }
     layer.add(tr);
     transformerRef.current = tr;
 
@@ -435,12 +440,14 @@ export default function Customizer({
           width: initialWidth * scaleXRatio,
           height: initialHeight * scaleYRatio,
           rotation: rotation || 0,
-          draggable: true,
+          draggable: !readOnly,
         });
 
         logoRef.current = logo;
         logoGroup.add(logo);
-        tr.nodes([logo]);
+        if (!readOnly) {
+          tr.nodes([logo]);
+        }
 
         // Dibujar el canvas por primera vez con el logo
         redrawLogoCanvas();
@@ -465,36 +472,40 @@ export default function Customizer({
           }
         };
 
-        // Escuchar eventos de arrastre y redimensionamiento para actualizar la máscara en tiempo real
-        logo.on('dragstart transformstart', () => {
-          isLogoInteractingRef.current = true;
-          redrawLogoCanvas();
-          if (logoCanvasRef.current) {
-            logo.image(logoCanvasRef.current);
-          }
-          layer.batchDraw();
-        });
+        if (!readOnly) {
+          // Escuchar eventos de arrastre y redimensionamiento para actualizar la máscara en tiempo real
+          logo.on('dragstart transformstart', () => {
+            isLogoInteractingRef.current = true;
+            redrawLogoCanvas();
+            if (logoCanvasRef.current) {
+              logo.image(logoCanvasRef.current);
+            }
+            layer.batchDraw();
+          });
 
-        logo.on('dragmove transform', () => {
-          redrawLogoCanvas();
-          if (logoCanvasRef.current) {
-            logo.image(logoCanvasRef.current);
-          }
-          layer.batchDraw();
-        });
+          logo.on('dragmove transform', () => {
+            redrawLogoCanvas();
+            if (logoCanvasRef.current) {
+              logo.image(logoCanvasRef.current);
+            }
+            layer.batchDraw();
+          });
 
-        logo.on('dragend transformend', () => {
-          isLogoInteractingRef.current = false;
-          redrawLogoCanvas();
-          if (logoCanvasRef.current) {
-            logo.image(logoCanvasRef.current);
-          }
-          layer.batchDraw();
-          notifyChange();
-        });
+          logo.on('dragend transformend', () => {
+            isLogoInteractingRef.current = false;
+            redrawLogoCanvas();
+            if (logoCanvasRef.current) {
+              logo.image(logoCanvasRef.current);
+            }
+            layer.batchDraw();
+            notifyChange();
+          });
+        }
 
         logo.on('click tap', () => {
-          tr.nodes([logo]);
+          if (!readOnly) {
+            tr.nodes([logo]);
+          }
         });
 
         layer.draw();
@@ -568,7 +579,7 @@ export default function Customizer({
     }
 
     if (logoRef.current) {
-      logoRef.current.draggable(!isPan);
+      logoRef.current.draggable(!isPan && !readOnly);
     }
     layerRef.current.draw();
   }, [mode]);

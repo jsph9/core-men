@@ -1,5 +1,11 @@
 "use client";
 import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
+
+const CustomizerDinamico = dynamic(
+  () => import("@/components/Customizer/Customizer"),
+  { ssr: false }
+);
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiGet, apiPatch } from "@/lib/api";
 import Link from "next/link";
@@ -335,6 +341,13 @@ const stepperSteps = [
   { label: "Confirmación de Cotización", icon: Handshake },
 ];
 
+const VIEW_TO_PLACEMENT: Record<string, string> = {
+  frontal: "FRONT",
+  espalda: "BACK",
+  brazo_izq: "LEFTSLEEVE",
+  brazo_der: "RIGHTSLEEVE",
+};
+
 export default function DetalleCotizacion() {
   const router = useRouter();
   const pathParams = useParams();
@@ -456,6 +469,11 @@ export default function DetalleCotizacion() {
 
   // Controla qué vista se muestra en el cuadro grande
   const [selectedView, setSelectedView] = useState<"frontal" | "espalda" | "brazo_izq" | "brazo_der">("frontal");
+
+  const matchingDesign = useMemo(() => {
+    const currentPlacement = VIEW_TO_PLACEMENT[selectedView];
+    return quote?.designs?.find((d: any) => d.placement === currentPlacement);
+  }, [quote?.designs, selectedView]);
 
   if (isLoading) return <div className="p-8 text-center text-slate-500 flex h-64 items-center justify-center">Cargando detalles...</div>;
   if (!quote) return <div className="p-8 text-center text-red-500 flex flex-col h-64 items-center justify-center gap-2">
@@ -659,18 +677,36 @@ export default function DetalleCotizacion() {
                   className="w-full bg-white rounded-lg border border-slate-200 flex items-center justify-center relative overflow-hidden"
                   style={{ height: '400px' }} 
                 >
-                  <img 
-                    key={selectedView}
-                    src={mockViews[selectedView]} 
-                    alt={`Vista ${selectedView}`} 
-                    // Cambiamos a object-contain absoluto para forzar proporción
-                    style={{ 
-                      width: '100%', 
-                      height: '100%', 
-                      objectFit: 'contain', 
-                      padding: '0rem' 
-                    }}
-                  />
+                  {matchingDesign ? (
+                    <div className="scale-[0.75] origin-center flex items-center justify-center shrink-0">
+                      <CustomizerDinamico
+                        baseGarmentUrl={matchingDesign.baseGarmentUrl}
+                        logoUrl={matchingDesign.logoUrl}
+                        positionX={matchingDesign.positionX}
+                        positionY={matchingDesign.positionY}
+                        width={matchingDesign.width}
+                        height={matchingDesign.height}
+                        rotation={matchingDesign.rotation}
+                        canvasWidth={matchingDesign.canvasWidth}
+                        canvasHeight={matchingDesign.canvasHeight}
+                        readOnly={true}
+                        isSimulationActive={true}
+                      />
+                    </div>
+                  ) : (
+                    <img 
+                      key={selectedView}
+                      src={mockViews[selectedView]} 
+                      alt={`Vista ${selectedView}`} 
+                      // Cambiamos a object-contain absoluto para forzar proporción
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'contain', 
+                        padding: '0rem' 
+                      }}
+                    />
+                  )}
                 </div>
 
                 {/* 2. LAS 4 MINIATURAS (Tamaño fijo de 5rem x 5rem) */}
