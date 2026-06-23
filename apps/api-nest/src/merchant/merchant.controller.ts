@@ -40,6 +40,12 @@ export class MerchantController {
     return this.quotesService.respondToQuote(req.user.userId, id, data);
   }
 
+  @Patch('quotes/:id/viable')
+  @Roles(Role.MERCHANT)
+  async markViable(@Req() req: any, @Param('id') id: string) {
+    return this.quotesService.markViable(req.user.userId, id);
+  }
+
   @Patch('quotes/:id/unfeasible')
   @Roles(Role.MERCHANT)
   async markUnfeasible(@Req() req: any, @Param('id') id: string, @Body() data: MarkUnfeasibleDto) {

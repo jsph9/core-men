@@ -359,9 +359,34 @@ export class QuotesService {
     return this.getMerchantQuoteById(id);
   }
 
+  async markViable(merchantId: string, id: string) {
+    const quote = await this.prisma.quote.findUnique({ where: { id } });
+    if (!quote || (quote.status !== QuoteMacroStatus.PENDING && quote.status !== QuoteMacroStatus.IN_REVIEW)) {
+      throw new BadRequestException('Cotización no válida para ser marcada como viable');
+    }
+
+    await this.prisma.quote.update({
+      where: { id },
+      data: {
+        viabilityStatus: ViabilityStatus.VIABLE,
+        statusHistory: {
+          create: {
+            changedField: 'VIABILITY',
+            oldValue: quote.viabilityStatus,
+            newValue: ViabilityStatus.VIABLE,
+            changedBy: merchantId,
+            note: 'Diseño marcado como viable por el comerciante',
+          },
+        },
+      },
+    });
+
+    return this.getMerchantQuoteById(id);
+  }
+
   async markUnfeasible(merchantId: string, id: string, data: MarkUnfeasibleDto) {
     const quote = await this.prisma.quote.findUnique({ where: { id } });
-    if (!quote || quote.status !== QuoteMacroStatus.PENDING) {
+    if (!quote || (quote.status !== QuoteMacroStatus.PENDING && quote.status !== QuoteMacroStatus.IN_REVIEW)) {
       throw new BadRequestException('Cotización no válida para ser marcada como inviable');
     }
 
@@ -378,13 +403,22 @@ export class QuotesService {
         unfeasibleReason: data.unfeasibleReason,
         whatsappUrl,
         statusHistory: {
-          create: {
-            changedField: 'STATUS',
-            oldValue: quote.status,
-            newValue: 'CANCELLED',
-            changedBy: merchantId,
-            note: 'Marcado inviable por el comerciante',
-          },
+          create: [
+            {
+              changedField: 'STATUS',
+              oldValue: quote.status,
+              newValue: 'CANCELLED',
+              changedBy: merchantId,
+              note: 'Marcado inviable por el comerciante',
+            },
+            {
+              changedField: 'VIABILITY',
+              oldValue: quote.viabilityStatus,
+              newValue: ViabilityStatus.NONVIABLE,
+              changedBy: merchantId,
+              note: `Motivo técnico: ${data.unfeasibleReason}`,
+            }
+          ],
         },
       },
     });

@@ -6,7 +6,7 @@ const CustomizerDinamico = dynamic(
   () => import("@/components/Customizer/Customizer"),
   { ssr: false }
 );
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiGet, apiPatch } from "@/lib/api";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
@@ -350,6 +350,7 @@ const VIEW_TO_PLACEMENT: Record<string, string> = {
 
 export default function DetalleCotizacion() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathParams = useParams();
   const id = pathParams?.id as string;
   
@@ -427,6 +428,19 @@ export default function DetalleCotizacion() {
     },
     onError: (err: any) => {
       toast.error("Error al rechazar cotización", { description: err.message });
+    }
+  });
+
+  const markViable = useMutation({
+    mutationFn: () => 
+      apiPatch(`/api/merchant/quotes/${id}/viable`, {}),
+    onSuccess: () => {
+      toast.success("Diseño marcado como viable");
+      setActiveModal(null);
+      queryClient.invalidateQueries({ queryKey: ["quote-detail", id] });
+    },
+    onError: (err: any) => {
+      toast.error("Error al marcar diseño como viable", { description: err.message });
     }
   });
 
@@ -1227,12 +1241,12 @@ export default function DetalleCotizacion() {
             </Button>
             <Button 
               className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold" 
+              disabled={markViable.isPending}
               onClick={() => {
-                toast.success("Diseño marcado como viable (Simulado)");
-                setActiveModal(null);
+                markViable.mutate();
               }}
             >
-              Confirmar Viabilidad
+              {markViable.isPending ? "Confirmando..." : "Confirmar Viabilidad"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1269,13 +1283,12 @@ export default function DetalleCotizacion() {
             </Button>
             <Button 
               variant="destructive" 
-              disabled={!unfeasibleReason.trim()} 
+              disabled={!unfeasibleReason.trim() || markUnfeasible.isPending} 
               onClick={() => {
-                toast.success("Diseño marcado como inviable (Simulado)");
-                setActiveModal(null);
+                markUnfeasible.mutate({ unfeasibleReason });
               }}
             >
-              Confirmar Inviabilidad
+              {markUnfeasible.isPending ? "Confirmando..." : "Confirmar Inviabilidad"}
             </Button>
           </DialogFooter>
         </DialogContent>
