@@ -311,19 +311,29 @@ export class QuotesService {
       where: { id },
       data: {
         status: QuoteMacroStatus.IN_REVIEW,
+        customerResponseStatus: CustomerResponseStatus.CONFIRMED,
         customerPrice: data.quotedPrice,
         finalPrice: data.finalPrice || null,
         estimatedProductionTime: data.estimatedProductionTime || null,
         merchantMessage: data.merchantMessage,
         totalQuantity,
         statusHistory: {
-          create: {
-            changedField: 'STATUS',
-            oldValue: quote.status,
-            newValue: 'IN_REVIEW',
-            changedBy: merchantId,
-            note: 'Comerciante respondió y actualizó cotización con precio',
-          },
+          create: [
+            {
+              changedField: 'STATUS',
+              oldValue: quote.status,
+              newValue: 'IN_REVIEW',
+              changedBy: merchantId,
+              note: 'Comerciante respondió y actualizó cotización con precio',
+            },
+            {
+              changedField: 'CUSTOMER_RESPONSE',
+              oldValue: quote.customerResponseStatus,
+              newValue: 'CONFIRMED',
+              changedBy: merchantId,
+              note: 'Propuesta comercial confirmada por el comerciante',
+            }
+          ],
         },
       },
     });
@@ -433,6 +443,32 @@ export class QuotesService {
             newValue: CustomerResponseStatus.IN_NEGOTIATION,
             changedBy: merchantId,
             note: 'Se inició negociación externa por WhatsApp',
+          },
+        },
+      },
+    });
+
+    return this.getMerchantQuoteById(id);
+  }
+
+  async rejectQuote(merchantId: string, id: string, rejectionReason: string) {
+    const quote = await this.prisma.quote.findUnique({ where: { id } });
+    if (!quote) {
+      throw new NotFoundException('Cotización no encontrada');
+    }
+
+    await this.prisma.quote.update({
+      where: { id },
+      data: {
+        customerResponseStatus: CustomerResponseStatus.REJECTED,
+        rejectionReason: rejectionReason,
+        statusHistory: {
+          create: {
+            changedField: 'CUSTOMER_RESPONSE',
+            oldValue: quote.customerResponseStatus,
+            newValue: CustomerResponseStatus.REJECTED,
+            changedBy: merchantId,
+            note: `Rechazado por el comerciante: ${rejectionReason}`,
           },
         },
       },

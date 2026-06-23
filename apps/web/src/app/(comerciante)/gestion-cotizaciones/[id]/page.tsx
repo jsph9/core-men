@@ -458,6 +458,19 @@ export default function DetalleCotizacion() {
     }
   });
 
+  const markRejected = useMutation({
+    mutationFn: (data: { rejectionReason: string }) => 
+      apiPatch(`/api/merchant/quotes/${id}/reject`, data),
+    onSuccess: () => {
+      toast.success("Cotización rechazada");
+      setActiveModal(null);
+      router.push("/gestion-cotizaciones");
+    },
+    onError: (err: any) => {
+      toast.error("Error al rechazar cotización", { description: err.message });
+    }
+  });
+
   // Procesamiento dinámico para la Matriz de Cantidades
   const uniqueSizes = useMemo(() => {
     if (!quote?.items) return [];
@@ -663,8 +676,7 @@ export default function DetalleCotizacion() {
 
   const handleRejectSubmit = () => {
     if (!rejectReason.trim()) return;
-    toast.success("Cotización rechazada (Acción simulada)");
-    setActiveModal(null);
+    markRejected.mutate({ rejectionReason: rejectReason });
   };
 
   const handleAcceptSubmit = () => {
@@ -677,11 +689,31 @@ export default function DetalleCotizacion() {
       toast.error("Por favor ingresa una cantidad de días de producción válida (número entero positivo)");
       return;
     }
+
+    // Concatenate discounts into the message
+    let discountText = "";
+    if (discountDetails.volumePct > 0) {
+      discountText += `\n- Descuento por cantidad (${totalQuantity} unidades): ${discountDetails.volumePct}%`;
+    }
+    if (discountDetails.seasonPct > 0) {
+      discountText += `\n- Descuento por temporada: ${discountDetails.seasonPct}%`;
+    }
+    if (discountText) {
+      const typeText = discountDetails.combinedType === 'accumulative' 
+        ? " (Acumulativo)" 
+        : discountDetails.combinedType === 'max' 
+          ? " (Se aplicó el mayor)" 
+          : "";
+      discountText = `\n\n[Descuentos Aplicados${typeText}]:${discountText}\nDescuento Total: -${discountDetails.totalDiscountPct}%`;
+    }
+
+    const fullMessage = (proposalMessage || "").trim() + discountText;
+
     respondQuote.mutate({
       quotedPrice: Number(proposalPrice),
       finalPrice: Number(proposalFinalPrice) || undefined,
       estimatedProductionTime: days,
-      merchantMessage: proposalMessage || undefined,
+      merchantMessage: fullMessage || undefined,
     });
   };
 
@@ -1379,10 +1411,10 @@ export default function DetalleCotizacion() {
             </Button>
             <Button 
               variant="destructive" 
-              disabled={!rejectReason.trim()} 
+              disabled={!rejectReason.trim() || markRejected.isPending} 
               onClick={handleRejectSubmit}
             >
-              Confirmar Rechazo
+              {markRejected.isPending ? "Confirmando..." : "Confirmar Rechazo"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1515,9 +1547,9 @@ export default function DetalleCotizacion() {
             <Button 
               className="bg-[#10B981] hover:bg-[#059669] text-white" 
               onClick={handleAcceptSubmit}
-              disabled={!proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice)) || isNaN(Number(proposalEstimatedDays))}
+              disabled={respondQuote.isPending || !proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice)) || isNaN(Number(proposalEstimatedDays))}
             >
-              Confirmar y Enviar
+              {respondQuote.isPending ? "Enviando..." : "Confirmar y Enviar"}
             </Button>
           </DialogFooter>
         </DialogContent>

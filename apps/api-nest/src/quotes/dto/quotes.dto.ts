@@ -102,3 +102,8 @@ export class MarkUnfeasibleDto {
   @IsString()
   unfeasibleReason: string;
 }
+
+export class RejectQuoteDto {
+  @IsString()
+  rejectionReason: string;
+}

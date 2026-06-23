@@ -2,7 +2,7 @@ import { Controller, Patch, Get, Body, Req, UseGuards, Param, Query } from '@nes
 import { MerchantService } from './merchant.service';
 import { QuotesService } from '../quotes/quotes.service';
 import { UpdateMerchantProfileDto } from './dto/merchant.dto';
-import { RespondQuoteDto, MarkUnfeasibleDto } from '../quotes/dto/quotes.dto';
+import { RespondQuoteDto, MarkUnfeasibleDto, RejectQuoteDto } from '../quotes/dto/quotes.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role, QuoteMacroStatus } from '@prisma/client';
@@ -56,5 +56,11 @@ export class MerchantController {
   @Roles(Role.MERCHANT)
   async startNegotiation(@Req() req: any, @Param('id') id: string) {
     return this.quotesService.startNegotiation(req.user.userId, id);
+  }
+
+  @Patch('quotes/:id/reject')
+  @Roles(Role.MERCHANT)
+  async rejectQuote(@Req() req: any, @Param('id') id: string, @Body() data: RejectQuoteDto) {
+    return this.quotesService.rejectQuote(req.user.userId, id, data.rejectionReason);
   }
 }
