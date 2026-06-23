@@ -404,7 +404,7 @@ export default function DetalleCotizacion() {
   }, [designedPlacements, activePreviewPlacement]);
 
   const respondQuote = useMutation({
-    mutationFn: (data: { quotedPrice: number; merchantMessage?: string }) => 
+    mutationFn: (data: { quotedPrice: number; estimatedProductionTime?: number; merchantMessage?: string }) => 
       apiPatch(`/api/merchant/quotes/${id}/respond`, data),
     onSuccess: () => {
       toast.success("Propuesta enviada correctamente");
@@ -536,7 +536,7 @@ export default function DetalleCotizacion() {
   const rawPhone = quote.client?.whatsappNumber || "999999999";
   const cleanPhone = rawPhone.replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/51${cleanPhone}?text=${encodeURIComponent(`Hola ${clientName}, me contacto por la cotización #${id?.slice(0, 6).toUpperCase()} en CoreMen.`)}`;
-  const quotedPrice = quote.estimatedPrice || quote.quotedPrice || 0;
+  const quotedPrice = quote.customerPrice || quote.estimatedPrice || quote.quotedPrice || 0;
 
   const handleRejectSubmit = () => {
     if (!rejectReason.trim()) return;
@@ -545,12 +545,18 @@ export default function DetalleCotizacion() {
   };
 
   const handleAcceptSubmit = () => {
-    if (!proposalPrice || isNaN(Number(proposalPrice))) {
+    if (!proposalPrice || isNaN(Number(proposalPrice)) || Number(proposalPrice) < 0) {
       toast.error("Por favor ingresa un precio válido");
+      return;
+    }
+    const days = parseInt(proposalEstimatedDays, 10);
+    if (isNaN(days) || days <= 0) {
+      toast.error("Por favor ingresa una cantidad de días de producción válida (número entero positivo)");
       return;
     }
     respondQuote.mutate({
       quotedPrice: Number(proposalPrice),
+      estimatedProductionTime: days,
       merchantMessage: proposalMessage || undefined,
     });
   };
@@ -589,6 +595,12 @@ export default function DetalleCotizacion() {
                   hour: '2-digit',
                   minute: '2-digit'
                 }) : "Fecha no disponible"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Tiempo de Producción</p>
+              <p className="text-base font-bold text-slate-800">
+                {quote?.estimatedProductionTime ? `${quote.estimatedProductionTime} días hábiles` : "No definido"}
               </p>
             </div>
           </div>
@@ -1255,9 +1267,10 @@ export default function DetalleCotizacion() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-500">Tiempo Estimado de Producción *</label>
+                <label className="text-xs font-semibold text-slate-500">Tiempo Estimado de Producción (Días Hábiles) *</label>
                 <Input 
-                  placeholder="Ej. 5 días hábiles" 
+                  type="number"
+                  placeholder="Ej. 5" 
                   value={proposalEstimatedDays} 
                   onChange={(e) => setProposalEstimatedDays(e.target.value)} 
                 />
@@ -1280,7 +1293,7 @@ export default function DetalleCotizacion() {
             <Button 
               className="bg-[#10B981] hover:bg-[#059669] text-white" 
               onClick={handleAcceptSubmit}
-              disabled={!proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice))}
+              disabled={!proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice)) || isNaN(Number(proposalEstimatedDays))}
             >
               Confirmar y Enviar
             </Button>

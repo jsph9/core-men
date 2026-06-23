@@ -365,11 +365,12 @@ model Quote {
 
   // Precios
   estimatedPrice      Decimal? @db.Decimal(12, 4)
-  totalEstimatedPrice Decimal? @db.Decimal(12, 4)
+  customerPrice       Decimal? @db.Decimal(12, 4)
   finalPrice          Decimal? @db.Decimal(12, 4)
 
   // Mensajes y Tracking
   merchantMessage  String?
+  estimatedProductionTime Int? // Tiempo estimado de producción en días
   unfeasibleReason String?
   rejectionReason  String?
   whatsappUrl      String?

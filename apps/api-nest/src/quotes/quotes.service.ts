@@ -41,12 +41,49 @@ export class QuotesService {
   async createQuote(clientId: string, data: CreateQuoteDto) {
     const { items, message, totalQuantity, designs } = data;
 
+    let estimatedPrice = 0;
+    for (const item of items) {
+      const variant = await this.prisma.productVariant.findUnique({
+        where: { id: item.productVariantId },
+        include: {
+          product: {
+            include: {
+              fabric: true,
+            },
+          },
+        },
+      });
+      if (variant) {
+        let unitPrice = Number(variant.price || variant.product.basePrice);
+        if (variant.product.fabric) {
+          unitPrice += Number(variant.product.fabric.price || 0);
+        }
+        if (designs && designs.length > 0) {
+          for (const d of designs) {
+            const p2t = await this.prisma.productToTechnique.findUnique({
+              where: {
+                productId_techniqueId: {
+                  productId: variant.productId,
+                  techniqueId: d.techniqueId,
+                },
+              },
+            });
+            if (p2t && p2t.specificPrice) {
+              unitPrice += Number(p2t.specificPrice);
+            }
+          }
+        }
+        estimatedPrice += unitPrice * item.quantity;
+      }
+    }
+
     const created = await this.prisma.quote.create({
       data: {
         clientId,
         totalQuantity,
         message: message || null,
         status: QuoteMacroStatus.PENDING,
+        estimatedPrice,
         items: {
           create: items.map(item => ({
             productVariantId: item.productVariantId,
@@ -260,7 +297,8 @@ export class QuotesService {
       where: { id },
       data: {
         status: QuoteMacroStatus.IN_REVIEW,
-        estimatedPrice: data.quotedPrice,
+        customerPrice: data.quotedPrice,
+        estimatedProductionTime: data.estimatedProductionTime || null,
         merchantMessage: data.merchantMessage,
         totalQuantity,
         statusHistory: {
@@ -290,6 +328,7 @@ export class QuotesService {
         status: QuoteMacroStatus.WAITING_PAYMENT,
         clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED,
         customerResponseStatus: CustomerResponseStatus.CONFIRMED,
+        finalPrice: quote.customerPrice || quote.estimatedPrice,
         statusHistory: {
           create: {
             changedField: 'STATUS',

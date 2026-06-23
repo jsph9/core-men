@@ -63,11 +63,62 @@ export default function CotizacionesClientePage() {
                     <p className="font-semibold text-gray-900">Cotización #{q.id.slice(0, 8)}</p>
                     <p className="text-sm text-gray-500">{garmentText} · {q.totalQuantity} uds · {formatDate(q.createdAt)}</p>
                     
-                    {q.estimatedPrice && (
-                      <p className="text-sm font-semibold text-blue-600 mt-1">
-                        Precio Propuesto: S/ {Number(q.estimatedPrice).toFixed(2)}
-                        {q.merchantMessage && <span className="text-xs text-slate-500 block font-normal mt-0.5">Mensaje comercial: "{q.merchantMessage}"</span>}
+                    {q.status === "PENDING" && q.estimatedPrice && (
+                      <p className="text-sm font-medium text-slate-600 mt-1">
+                        Precio Estimado (Software): <span className="font-bold text-slate-900">S/ {Number(q.estimatedPrice).toFixed(2)}</span>
                       </p>
+                    )}
+
+                    {q.status === "IN_REVIEW" && (
+                      <div className="space-y-1.5 mt-1">
+                        {q.customerPrice && (
+                          <p className="text-sm font-medium text-blue-600">
+                            Precio Propuesto: <span className="font-bold">S/ {Number(q.customerPrice).toFixed(2)}</span>
+                          </p>
+                        )}
+                        {q.estimatedProductionTime && (
+                          <p className="text-xs text-slate-600 font-medium">
+                            Tiempo de Producción: <span className="font-bold text-slate-950">{q.estimatedProductionTime} días hábiles</span>
+                          </p>
+                        )}
+                        {q.merchantMessage && (
+                          <span className="text-xs text-slate-500 block font-normal mt-0.5">
+                            Mensaje comercial: "{q.merchantMessage}"
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {["WAITING_PAYMENT", "IN_PRODUCTION", "READY_FOR_PICKUP", "DELIVERED"].includes(q.status) && (
+                      <div className="space-y-1.5 mt-1">
+                        {q.finalPrice && (
+                          <p className="text-sm font-medium text-emerald-600">
+                            Precio Final: <span className="font-bold">S/ {Number(q.finalPrice).toFixed(2)}</span>
+                          </p>
+                        )}
+                        {q.estimatedProductionTime && (
+                          <p className="text-xs text-slate-600 font-medium">
+                            Tiempo de Producción: <span className="font-bold text-slate-950">{q.estimatedProductionTime} días hábiles</span>
+                          </p>
+                        )}
+                        {q.merchantMessage && (
+                          <span className="text-xs text-slate-500 block font-normal mt-0.5">
+                            Mensaje comercial: "{q.merchantMessage}"
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {q.status === "CANCELLED" && (
+                      <div className="space-y-1 mt-1 text-slate-500 text-xs">
+                        {q.finalPrice ? (
+                          <p>Precio Final: S/ {Number(q.finalPrice).toFixed(2)}</p>
+                        ) : q.customerPrice ? (
+                          <p>Precio Propuesto: S/ {Number(q.customerPrice).toFixed(2)}</p>
+                        ) : q.estimatedPrice ? (
+                          <p>Precio Estimado (Software): S/ {Number(q.estimatedPrice).toFixed(2)}</p>
+                        ) : null}
+                      </div>
                     )}
 
                     {q.status === "CANCELLED" && q.unfeasibleReason ? (

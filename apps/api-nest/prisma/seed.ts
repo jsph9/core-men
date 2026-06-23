@@ -418,7 +418,7 @@ async function main() {
   // Cotización 1.1 (Viable/Producción)
   await prisma.quote.create({
     data: {
-      clientId: client1.id, totalQuantity: 15, message: 'Necesito polos blancos y negros con mi logo en el pecho...', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED, customerResponseStatus: CustomerResponseStatus.CONFIRMED, status: QuoteMacroStatus.IN_PRODUCTION, estimatedPrice: 250.00, finalPrice: 250.00,
+      clientId: client1.id, totalQuantity: 15, message: 'Necesito polos blancos y negros con mi logo en el pecho...', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED, customerResponseStatus: CustomerResponseStatus.CONFIRMED, status: QuoteMacroStatus.IN_PRODUCTION, estimatedPrice: 250.00, customerPrice: 250.00, finalPrice: 250.00, estimatedProductionTime: 5,
       items: { create: [
         { productVariantId: await getVariant('Polo Básico Cuello Redondo 20/1', 'Blanco', 'S'), quantity: 5 },
         { productVariantId: await getVariant('Polo Básico Cuello Redondo 20/1', 'Blanco', 'M'), quantity: 5 },
@@ -443,7 +443,7 @@ async function main() {
   // Cotización 2.1 (Corporativa Entregada)
   await prisma.quote.create({
     data: {
-      clientId: client2.id, totalQuantity: 100, message: 'Polos piqué institucionales para los supervisores.', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED, customerResponseStatus: CustomerResponseStatus.CONFIRMED, status: QuoteMacroStatus.DELIVERED, estimatedPrice: 4300.00, finalPrice: 4300.00,
+      clientId: client2.id, totalQuantity: 100, message: 'Polos piqué institucionales para los supervisores.', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED, customerResponseStatus: CustomerResponseStatus.CONFIRMED, status: QuoteMacroStatus.DELIVERED, estimatedPrice: 4300.00, customerPrice: 4300.00, finalPrice: 4300.00, estimatedProductionTime: 10,
       items: { create: [{ productVariantId: await getVariant('Polo Cuello Camisero (Piqué)', 'Azul Marino', 'M'), quantity: 50 }, { productVariantId: await getVariant('Polo Cuello Camisero (Piqué)', 'Azul Marino', 'L'), quantity: 50 }] },
       designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/front.png', logoUrl: '/logo.png', positionX: 45, positionY: 35, width: 8, height: 8, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.LEFTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/sL.png', logoUrl: '/l.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.RIGHTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/sR.png', logoUrl: '/r.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       payments: { create: [{ totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FAILED, amountPaid: 0, paymentMethod: PaymentMethod.CARD }, { totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FULL_PAYMENT, amountPaid: 4300.00, paymentMethod: PaymentMethod.TRANSFER }]},

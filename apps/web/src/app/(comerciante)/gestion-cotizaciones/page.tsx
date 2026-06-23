@@ -93,17 +93,17 @@ export default function CotizacionesComerciante() {
   // Mayor Valor de Cotización (Card 3)
   const maxQuoteValue = useMemo(() => {
     if (activeNegociaciones.length === 0) return 0;
-    return Math.max(...activeNegociaciones.map((q: any) => Number(q.estimatedPrice) || 0));
+    return Math.max(...activeNegociaciones.map((q: any) => Number(q.customerPrice || q.estimatedPrice) || 0));
   }, [activeNegociaciones]);
 
   // ID de la Cotización con Mayor Valor (para Card 3 clickeable)
   const maxQuoteId = useMemo(() => {
     if (activeNegociaciones.length === 0) return null;
     let maxQuote = activeNegociaciones[0];
-    let maxVal = Number(maxQuote.estimatedPrice) || 0;
+    let maxVal = Number(maxQuote.customerPrice || maxQuote.estimatedPrice) || 0;
     
     for (let i = 1; i < activeNegociaciones.length; i++) {
-      const val = Number(activeNegociaciones[i].estimatedPrice) || 0;
+      const val = Number(activeNegociaciones[i].customerPrice || activeNegociaciones[i].estimatedPrice) || 0;
       if (val > maxVal) {
         maxVal = val;
         maxQuote = activeNegociaciones[i];
@@ -114,7 +114,7 @@ export default function CotizacionesComerciante() {
 
   // Suma de Valores de Cotización (Card 4)
   const sumQuoteValue = useMemo(() => {
-    return activeNegociaciones.reduce((acc: number, q: any) => acc + (Number(q.estimatedPrice) || 0), 0);
+    return activeNegociaciones.reduce((acc: number, q: any) => acc + (Number(q.customerPrice || q.estimatedPrice) || 0), 0);
   }, [activeNegociaciones]);
 
   // 6. Lógica de Filtrado en Tiempo Real (Frontend)
@@ -423,7 +423,13 @@ export default function CotizacionesComerciante() {
                         {getStatusBadge(quote.status)}
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        {quote.estimatedPrice ? <span className="font-semibold text-slate-900">S/ {Number(quote.estimatedPrice).toFixed(2)}</span> : "Por definir"}
+                        {quote.customerPrice ? (
+                          <span className="font-semibold text-slate-900">S/ {Number(quote.customerPrice).toFixed(2)}</span>
+                        ) : quote.estimatedPrice ? (
+                          <span className="text-slate-500 italic" title="Precio estimado por el software">S/ {Number(quote.estimatedPrice).toFixed(2)} (Est.)</span>
+                        ) : (
+                          "Por definir"
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {/* Enlace dinámico con el icono del Ojo */}

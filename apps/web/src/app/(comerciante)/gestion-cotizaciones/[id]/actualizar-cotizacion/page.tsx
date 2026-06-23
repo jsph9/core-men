@@ -240,9 +240,9 @@ export default function ActualizarCotizacion() {
     if (quote) {
       setGarmentType(quote.items?.[0]?.productVariant?.product?.name || quote.garmentType || "Polo Básico");
       setFabricType(quote.items?.[0]?.productVariant?.product?.fabric?.value || quote.fabricType || "Algodón");
-      setPrice(quote.estimatedPrice || quote.quotedPrice ? String(quote.estimatedPrice || quote.quotedPrice) : "");
+      setPrice(quote.customerPrice || quote.estimatedPrice || quote.quotedPrice ? String(quote.customerPrice || quote.estimatedPrice || quote.quotedPrice) : "");
       setMessage(quote.merchantMessage || "");
-      setEstimatedDays("");
+      setEstimatedDays(quote.estimatedProductionTime ? String(quote.estimatedProductionTime) : "");
       
       const firstProdId = quote.items?.[0]?.productVariant?.product?.id || quote.items?.[0]?.productVariant?.productId;
       if (firstProdId && !selectedProductId) {
@@ -293,7 +293,7 @@ export default function ActualizarCotizacion() {
 
   // Respond / Update quote mutation
   const respondMutation = useMutation({
-    mutationFn: (data: { quotedPrice: number; merchantMessage?: string; items?: any[]; designs?: any[] }) => 
+    mutationFn: (data: { quotedPrice: number; estimatedProductionTime?: number; merchantMessage?: string; items?: any[]; designs?: any[] }) => 
       apiPatch(`/api/merchant/quotes/${id}/respond`, data),
     onSuccess: () => {
       toast.success("Propuesta de cotización actualizada con éxito");
@@ -445,8 +445,9 @@ export default function ActualizarCotizacion() {
       toast.error("Por favor ingresa un precio propuesto válido");
       return;
     }
-    if (!estimatedDays.trim()) {
-      toast.error("Por favor ingresa el tiempo estimado de producción");
+    const days = parseInt(estimatedDays, 10);
+    if (isNaN(days) || days <= 0) {
+      toast.error("Por favor ingresa una cantidad de días de producción válida (número entero positivo)");
       return;
     }
     if (!message.trim()) {
@@ -454,7 +455,7 @@ export default function ActualizarCotizacion() {
       return;
     }
 
-    const fullMessage = `${message.trim()} (Plazo de producción: ${estimatedDays.trim()})`;
+    const fullMessage = `${message.trim()} (Plazo de producción: ${days} días hábiles)`;
 
     // Construir la lista de items actualizados mapeando a variante de producto
     const itemsPayload = Object.entries(quantities)
@@ -502,6 +503,7 @@ export default function ActualizarCotizacion() {
 
     respondMutation.mutate({
       quotedPrice: Number(price),
+      estimatedProductionTime: days,
       merchantMessage: fullMessage,
       items: itemsPayload,
       designs: designsPayload,
@@ -1347,9 +1349,10 @@ export default function ActualizarCotizacion() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Tiempo de Producción *</label>
+                    <label className="text-xs font-bold text-slate-500">Tiempo de Producción (Días Hábiles) *</label>
                     <Input 
-                      placeholder="Ej. 5 días hábiles" 
+                      type="number"
+                      placeholder="Ej. 5" 
                       value={estimatedDays}
                       onChange={(e) => setEstimatedDays(e.target.value)}
                       className="h-11"

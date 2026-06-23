@@ -77,6 +77,10 @@ export class RespondQuoteDto {
   merchantMessage?: string;
 
   @IsOptional()
+  @IsNumber()
+  estimatedProductionTime?: number;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => QuoteItemDto)
