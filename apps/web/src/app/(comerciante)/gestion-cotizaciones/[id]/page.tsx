@@ -444,6 +444,20 @@ export default function DetalleCotizacion() {
     }
   });
 
+  const startNegotiation = useMutation({
+    mutationFn: () => 
+      apiPatch(`/api/merchant/quotes/${id}/negotiate`, {}),
+    onSuccess: () => {
+      toast.success("Negociación iniciada");
+      setActiveModal(null);
+      queryClient.invalidateQueries({ queryKey: ["quote-detail", id] });
+      window.open(whatsappUrl, "_blank");
+    },
+    onError: (err: any) => {
+      toast.error("Error al iniciar negociación", { description: err.message });
+    }
+  });
+
   // Procesamiento dinámico para la Matriz de Cantidades
   const uniqueSizes = useMemo(() => {
     if (!quote?.items) return [];
@@ -1548,13 +1562,21 @@ export default function DetalleCotizacion() {
           </div>
 
           <button 
-            className="w-full h-12 mt-4 bg-whatsapp hover:bg-whatsapp-dark text-white flex items-center justify-center gap-2 rounded-xl text-base font-semibold transition-colors shadow-sm cursor-pointer"
-            onClick={() => window.open(whatsappUrl, "_blank")}
+            className="w-full h-12 mt-4 bg-whatsapp hover:bg-whatsapp-dark text-white flex items-center justify-center gap-2 rounded-xl text-base font-semibold transition-colors shadow-sm cursor-pointer disabled:opacity-75"
+            disabled={startNegotiation.isPending}
+            onClick={() => {
+              if (quote.customerResponseStatus === "IN_NEGOTIATION") {
+                window.open(whatsappUrl, "_blank");
+                setActiveModal(null);
+              } else {
+                startNegotiation.mutate();
+              }
+            }}
           >
             <svg className="w-5 h-5 fill-white" viewBox="0 0 24 24">
               <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.907.534 3.705 1.464 5.253L2 22l4.908-1.428a9.962 9.962 0 005.096 1.436c5.524 0 10.004-4.48 10.004-10.004C22.008 6.48 17.528 2 12.004 2zm5.834 14.264c-.256.72-.98 1.284-1.724 1.488-.507.14-1.17.25-3.35-.612-2.784-1.1-4.577-3.92-4.717-4.108-.14-.188-1.133-1.503-1.133-2.867 0-1.364.713-2.035.966-2.307.253-.272.553-.34.74-.34.187 0 .374.003.535.011.166.008.39-.06.61.472.227.548.777 1.895.845 2.03.068.136.113.294.022.476-.09.182-.136.294-.272.453-.136.159-.286.355-.408.476-.136.136-.278.284-.12.556.158.272.705 1.157 1.51 1.874.805.717 1.48.937 1.747 1.073.267.136.42.114.578-.068.158-.182.68-.792.861-1.063.181-.271.363-.227.61-.136.248.09 1.574.743 1.846.879.271.136.452.204.52.317.068.113.068.653-.188 1.373z"/>
             </svg>
-            Contactar por WhatsApp
+            {startNegotiation.isPending ? "Iniciando..." : "Contactar por WhatsApp"}
           </button>
 
           <DialogFooter className="mt-4 flex justify-end gap-2">

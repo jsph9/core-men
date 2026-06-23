@@ -51,4 +51,10 @@ export class MerchantController {
   async markUnfeasible(@Req() req: any, @Param('id') id: string, @Body() data: MarkUnfeasibleDto) {
     return this.quotesService.markUnfeasible(req.user.userId, id, data);
   }
+
+  @Patch('quotes/:id/negotiate')
+  @Roles(Role.MERCHANT)
+  async startNegotiation(@Req() req: any, @Param('id') id: string) {
+    return this.quotesService.startNegotiation(req.user.userId, id);
+  }
 }

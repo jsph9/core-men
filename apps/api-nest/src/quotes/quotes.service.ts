@@ -415,4 +415,29 @@ export class QuotesService {
 
     return this.getMerchantQuoteById(id);
   }
+
+  async startNegotiation(merchantId: string, id: string) {
+    const quote = await this.prisma.quote.findUnique({ where: { id } });
+    if (!quote) {
+      throw new NotFoundException('Cotización no encontrada');
+    }
+
+    await this.prisma.quote.update({
+      where: { id },
+      data: {
+        customerResponseStatus: CustomerResponseStatus.IN_NEGOTIATION,
+        statusHistory: {
+          create: {
+            changedField: 'CUSTOMER_RESPONSE',
+            oldValue: quote.customerResponseStatus,
+            newValue: CustomerResponseStatus.IN_NEGOTIATION,
+            changedBy: merchantId,
+            note: 'Se inició negociación externa por WhatsApp',
+          },
+        },
+      },
+    });
+
+    return this.getMerchantQuoteById(id);
+  }
 }
