@@ -357,6 +357,7 @@ export default function DetalleCotizacion() {
   const [rejectReason, setRejectReason] = useState("");
   const [unfeasibleReason, setUnfeasibleReason] = useState("");
   const [proposalPrice, setProposalPrice] = useState("");
+  const [proposalFinalPrice, setProposalFinalPrice] = useState("");
   const [proposalEstimatedDays, setProposalEstimatedDays] = useState("");
   const [proposalMessage, setProposalMessage] = useState("");
 
@@ -404,7 +405,7 @@ export default function DetalleCotizacion() {
   }, [designedPlacements, activePreviewPlacement]);
 
   const respondQuote = useMutation({
-    mutationFn: (data: { quotedPrice: number; estimatedProductionTime?: number; merchantMessage?: string }) => 
+    mutationFn: (data: { quotedPrice: number; finalPrice?: number; estimatedProductionTime?: number; merchantMessage?: string }) => 
       apiPatch(`/api/merchant/quotes/${id}/respond`, data),
     onSuccess: () => {
       toast.success("Propuesta enviada correctamente");
@@ -497,6 +498,100 @@ export default function DetalleCotizacion() {
     return quote?.designs?.find((d: any) => d.placement === currentPlacement);
   }, [quote?.designs, selectedView]);
 
+  // Lógica de cálculo de descuentos en tiempo real
+  const discountDetails = useMemo(() => {
+    if (!quote || !quote.availableDiscounts) {
+      return { volumeDiscount: null, volumePct: 0, seasonDiscount: null, seasonPct: 0, totalDiscountPct: 0, combinedType: 'none', showVolume: false, showSeason: false };
+    }
+
+    const { discountRules = [], seasonDiscounts = [] } = quote.availableDiscounts;
+    const qty = quote.totalQuantity || 0;
+
+    // 1. Descuento por cantidad (Volume)
+    const volumeDiscount = discountRules.find((rule: any) => {
+      const minQty = Number(rule.minQuantity);
+      const maxQty = rule.maxQuantity !== null ? Number(rule.maxQuantity) : null;
+      return qty >= minQty && (maxQty === null || qty <= maxQty);
+    });
+    const volumePct = volumeDiscount ? Number(volumeDiscount.percentage) : 0;
+
+    // 2. Descuento por temporada (Season)
+    const applicableSeasonDiscounts = seasonDiscounts.filter((sd: any) => {
+      if (!sd.appliesTo || sd.appliesTo.length === 0) return true;
+      return quote.items?.some((item: any) => {
+        const catName = item.productVariant?.product?.category?.name;
+        const catId = item.productVariant?.product?.categoryId;
+        return sd.appliesTo.includes(catName) || sd.appliesTo.includes(catId);
+      });
+    });
+
+    let seasonDiscount = null;
+    let seasonPct = 0;
+    if (applicableSeasonDiscounts.length > 0) {
+      seasonDiscount = applicableSeasonDiscounts.reduce((max: any, current: any) => {
+        return Number(current.percentage) > Number(max.percentage) ? current : max;
+      }, applicableSeasonDiscounts[0]);
+      seasonPct = Number(seasonDiscount.percentage);
+    }
+
+    // 3. Combinación de descuentos
+    let totalDiscountPct = 0;
+    let combinedType = 'none';
+
+    if (volumePct > 0 && seasonPct > 0) {
+      if (seasonDiscount.isAccumulative) {
+        totalDiscountPct = Math.min(volumePct + seasonPct, 100);
+        combinedType = 'accumulative';
+      } else {
+        totalDiscountPct = Math.max(volumePct, seasonPct);
+        combinedType = 'max';
+      }
+    } else if (volumePct > 0) {
+      totalDiscountPct = volumePct;
+    } else if (seasonPct > 0) {
+      totalDiscountPct = seasonPct;
+    }
+
+    return {
+      volumeDiscount,
+      volumePct,
+      seasonDiscount,
+      seasonPct,
+      totalDiscountPct,
+      combinedType,
+      showVolume: volumePct > 0,
+      showSeason: seasonPct > 0
+    };
+  }, [quote]);
+
+  const handleBasePriceChange = (val: string) => {
+    setProposalPrice(val);
+    if (!val || isNaN(Number(val))) {
+      setProposalFinalPrice("");
+      return;
+    }
+    const base = Number(val);
+    const pct = discountDetails.totalDiscountPct;
+    const final = base * (1 - pct / 100);
+    setProposalFinalPrice(final.toFixed(2));
+  };
+
+  const handleFinalPriceChange = (val: string) => {
+    setProposalFinalPrice(val);
+    if (!val || isNaN(Number(val))) {
+      setProposalPrice("");
+      return;
+    }
+    const final = Number(val);
+    const pct = discountDetails.totalDiscountPct;
+    if (pct >= 100) {
+      setProposalPrice("0.00");
+    } else {
+      const base = final / (1 - pct / 100);
+      setProposalPrice(base.toFixed(2));
+    }
+  };
+
   if (isLoading) return <div className="p-8 text-center text-slate-500 flex h-64 items-center justify-center">Cargando detalles...</div>;
   if (!quote) return <div className="p-8 text-center text-red-500 flex flex-col h-64 items-center justify-center gap-2">
     <p className="font-bold text-lg">Cotización no encontrada.</p>
@@ -556,6 +651,7 @@ export default function DetalleCotizacion() {
     }
     respondQuote.mutate({
       quotedPrice: Number(proposalPrice),
+      finalPrice: Number(proposalFinalPrice) || undefined,
       estimatedProductionTime: days,
       merchantMessage: proposalMessage || undefined,
     });
@@ -1080,6 +1176,17 @@ export default function DetalleCotizacion() {
                   } else if (btn.action === "VIABLE") {
                     setActiveModal("VIABLE");
                   } else if (btn.action === "ACEPTAR") {
+                    const basePrice = quote.customerPrice || quote.estimatedPrice || quote.quotedPrice || 0;
+                    setProposalPrice(basePrice ? String(basePrice) : "");
+                    if (basePrice) {
+                      const pct = discountDetails.totalDiscountPct;
+                      const final = Number(basePrice) * (1 - pct / 100);
+                      setProposalFinalPrice(final.toFixed(2));
+                    } else {
+                      setProposalFinalPrice("");
+                    }
+                    setProposalEstimatedDays(quote.estimatedProductionTime ? String(quote.estimatedProductionTime) : "");
+                    setProposalMessage(quote.merchantMessage || "");
                     setActiveModal("ACEPTAR");
                   } else if (btn.action === "WHATSAPP") {
                     setActiveModal("WHATSAPP");
@@ -1263,9 +1370,56 @@ export default function DetalleCotizacion() {
                   type="number" 
                   placeholder="Ej. 1250" 
                   value={proposalPrice} 
-                  onChange={(e) => setProposalPrice(e.target.value)} 
+                  onChange={(e) => handleBasePriceChange(e.target.value)} 
                 />
+                <span className="text-[10px] text-slate-400 block mt-0.5">Precio base propuesto antes de descuentos a nivel cliente.</span>
               </div>
+
+              {/* Descuentos Aplicados */}
+              {(discountDetails.showVolume || discountDetails.showSeason) && (
+                <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3 text-xs space-y-1.5">
+                  <span className="font-bold text-amber-800 block mb-0.5">Descuentos Aplicados automáticamente:</span>
+                  
+                  {discountDetails.showVolume && (
+                    <div className="flex justify-between items-center text-amber-700">
+                      <span>• Descuento por cantidad (mayor a {discountDetails.volumeDiscount.minQuantity} uds):</span>
+                      <span className="font-bold">-{discountDetails.volumePct}%</span>
+                    </div>
+                  )}
+                  
+                  {discountDetails.showSeason && (
+                    <div className="flex justify-between items-center text-amber-700">
+                      <span>• Descuento por temporada ({discountDetails.seasonDiscount.name}):</span>
+                      <span className="font-bold">-{discountDetails.seasonPct}%</span>
+                    </div>
+                  )}
+
+                  <div className="border-t border-amber-200/50 pt-1.5 flex justify-between items-center text-amber-800 font-bold">
+                    <span>
+                      {discountDetails.combinedType === 'accumulative' ? (
+                        <span className="text-[10px] text-amber-600 font-normal italic">(Descuentos acumulados)</span>
+                      ) : discountDetails.combinedType === 'max' ? (
+                        <span className="text-[10px] text-amber-600 font-normal italic">(Se aplica el mayor, no acumulativo)</span>
+                      ) : null}{" "}
+                      Descuento Total:
+                    </span>
+                    <span>-{discountDetails.totalDiscountPct}%</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-500">Valor final a pagar por el Cliente (S/) *</label>
+                <Input 
+                  type="number" 
+                  placeholder="Ej. 1200" 
+                  value={proposalFinalPrice} 
+                  onChange={(e) => handleFinalPriceChange(e.target.value)} 
+                  className="bg-green-50/20 border-green-200 focus:border-green-500 text-green-700 font-bold"
+                />
+                <span className="text-[10px] text-slate-400 block mt-0.5">Precio final calculado aplicando los descuentos.</span>
+              </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500">Tiempo Estimado de Producción (Días Hábiles) *</label>
                 <Input 
@@ -1275,6 +1429,7 @@ export default function DetalleCotizacion() {
                   onChange={(e) => setProposalEstimatedDays(e.target.value)} 
                 />
               </div>
+
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-slate-500">Mensaje Comercial *</label>
                 <Textarea 

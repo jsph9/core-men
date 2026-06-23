@@ -230,7 +230,21 @@ export class QuotesService {
       return this.getMerchantQuoteById(id);
     }
 
-    return quote;
+    const discountRules = await this.prisma.discountRule.findMany({
+      where: { isActive: true }
+    });
+    
+    const seasonDiscounts = await this.prisma.seasonDiscount.findMany({
+      where: { status: 'ACTIVE' }
+    });
+
+    return {
+      ...quote,
+      availableDiscounts: {
+        discountRules,
+        seasonDiscounts
+      }
+    };
   }
 
   async respondToQuote(merchantId: string, id: string, data: RespondQuoteDto) {
@@ -298,6 +312,7 @@ export class QuotesService {
       data: {
         status: QuoteMacroStatus.IN_REVIEW,
         customerPrice: data.quotedPrice,
+        finalPrice: data.finalPrice || null,
         estimatedProductionTime: data.estimatedProductionTime || null,
         merchantMessage: data.merchantMessage,
         totalQuantity,

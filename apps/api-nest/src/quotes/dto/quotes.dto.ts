@@ -73,6 +73,10 @@ export class RespondQuoteDto {
   quotedPrice: number;
 
   @IsOptional()
+  @IsNumber()
+  finalPrice?: number;
+
+  @IsOptional()
   @IsString()
   merchantMessage?: string;
 
