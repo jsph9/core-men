@@ -601,19 +601,19 @@ async function main() {
     data: {
       clientId: client2.id, 
       totalQuantity: 120, 
-      message: 'Cotización para casacas universitarias con bordado grande en la espalda.', 
+      message: 'Cotización para polos camiseros con aberturas con bordado grande en la espalda.', 
       isVisited: true,
       status: QuoteMacroStatus.IN_REVIEW,
       viabilityStatus: ViabilityStatus.NONVIABLE,
       customerResponseStatus: CustomerResponseStatus.IN_NEGOTIATION,
       clientFormalizationStatus: ClientFormalizationStatus.PENDING,
-      unfeasibleReason: 'El bordado solicitado para la espalda excede las dimensiones máximas de la matriz de la máquina bordadora industrial para casacas.',
+      unfeasibleReason: 'El bordado solicitado para la espalda excede las dimensiones máximas de la matriz de la máquina bordadora industrial para polos camiseros.',
       estimatedPrice: 6500.00,
       items: { 
         create: [
-          { productVariantId: await getVariant('Casaca Bomber', 'Verde Militar', 'M'), quantity: 40 },
-          { productVariantId: await getVariant('Casaca Bomber', 'Verde Militar', 'L'), quantity: 50 },
-          { productVariantId: await getVariant('Casaca Bomber', 'Verde Militar', 'XL'), quantity: 30 }
+          { productVariantId: await getVariant('Polo Camisero con Aberturas', 'Blanco', 'S'), quantity: 40 },
+          { productVariantId: await getVariant('Polo Camisero con Aberturas', 'Blanco', 'M'), quantity: 50 },
+          { productVariantId: await getVariant('Polo Camisero con Aberturas', 'Blanco', 'L'), quantity: 30 }
         ] 
       },
       designs: { 
@@ -621,7 +621,7 @@ async function main() {
           { 
             placement: DesignPlacement.BACK, 
             techniqueId: getId(dbTechs, 'name', 'Bordado')!, 
-            baseGarmentUrl: '/bomber_back.png', 
+            baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782055281183-250990858.png', 
             logoUrl: '/college_crest.png', 
             positionX: 50, 
             positionY: 35, 
