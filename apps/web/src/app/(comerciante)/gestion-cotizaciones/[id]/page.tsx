@@ -457,67 +457,36 @@ export default function DetalleCotizacion() {
   // Controla qué vista se muestra en el cuadro grande
   const [selectedView, setSelectedView] = useState<"frontal" | "espalda" | "brazo_izq" | "brazo_der">("frontal");
 
-  // Las 4 imágenes fijas (usamos tu prenda base para la frontal y placeholders para el resto por ahora)
-  const mockViews = {
-    frontal: "/prenda-base.png", 
-    espalda: "/prenda-base2.png", 
-    brazo_izq: "/prenda-base3.jpg",
-    brazo_der: "/prenda-base4.jpg"
-  };
-
   if (isLoading) return <div className="p-8 text-center text-slate-500 flex h-64 items-center justify-center">Cargando detalles...</div>;
   if (!quote) return <div className="p-8 text-center text-red-500 flex flex-col h-64 items-center justify-center gap-2">
     <p className="font-bold text-lg">Cotización no encontrada.</p>
     <Link href="/gestion-cotizaciones" className="mt-4 text-blue-500 underline">Volver a la bandeja</Link>
   </div>;
 
-  // Mapa de productos base mock para redirección al catálogo
-  const mockBaseProducts: Record<string, { id: string; name: string; basePrice: number; category: string; fabric: string; image: string }> = {
-    "Polo Cuello Camisero": {
-      id: "polo-camisero-id",
-      name: "Polo Cuello Camisero",
-      basePrice: 35.00,
-      category: "Polos",
-      fabric: "Piqué",
-      image: "/prenda-base.png"
-    },
-    "Polera Oversize": {
-      id: "polera-oversize-id",
-      name: "Polera Oversize",
-      basePrice: 55.00,
-      category: "Poleras",
-      fabric: "Franela",
-      image: "/prenda-base2.png"
-    },
-    "Casaca Cortaviento": {
-      id: "casaca-cortaviento-id",
-      name: "Casaca Cortaviento",
-      basePrice: 75.00,
-      category: "Casacas",
-      fabric: "Taslan",
-      image: "/prenda-base3.jpg"
-    },
-    "Polo Básico": {
-      id: "polo-basico-id",
-      name: "Polo Básico",
-      basePrice: 25.00,
-      category: "Polos",
-      fabric: "Jersey",
-      image: "/prenda-base.png"
-    }
+  const firstItem = quote.items?.[0];
+  const dbProduct = firstItem?.productVariant?.product;
+  const dbProductImages = dbProduct?.images || [];
+
+  // Las 4 imágenes dinámicas (o fallbacks locales si no están disponibles)
+  const mockViews = {
+    frontal: dbProductImages[0]?.url || "/prenda-base.png", 
+    espalda: dbProductImages[1]?.url || "/prenda-base2.png", 
+    brazo_izq: dbProductImages[2]?.url || "/prenda-base3.jpg",
+    brazo_der: dbProductImages[3]?.url || "/prenda-base4.jpg"
   };
 
-  const firstItem = quote.items?.[0];
-  const garmentType = firstItem?.productVariant?.product?.name || quote.garmentType || "Polo Cuello Camisero";
-  const fabricType = firstItem?.productVariant?.product?.fabric?.value || quote.fabricType || "Piqué";
+  const garmentType = dbProduct?.name || quote.garmentType || "Polo Cuello Camisero";
+  const fabricType = dbProduct?.fabric?.value || quote.fabricType || "Piqué";
 
-  const baseProduct = mockBaseProducts[garmentType] || {
-    id: "polo-camisero-id",
+  const dbProductPrimaryImage = dbProductImages.find((img: any) => img.isPrimary)?.url || dbProductImages[0]?.url;
+
+  const baseProduct = {
+    id: dbProduct?.id || "polo-camisero-id",
     name: garmentType,
-    basePrice: quote.estimatedPrice || quote.quotedPrice ? Number(quote.estimatedPrice || quote.quotedPrice) * 0.7 : 35.00,
-    category: "Prendas",
+    basePrice: dbProduct?.basePrice ? Number(dbProduct.basePrice) : (quote.estimatedPrice || quote.quotedPrice ? Number(quote.estimatedPrice || quote.quotedPrice) * 0.7 : 35.00),
+    category: dbProduct?.category?.name || "Prendas",
     fabric: fabricType || "Textil",
-    image: "/prenda-base.png"
+    image: dbProductPrimaryImage || "/prenda-base.png"
   };
 
   const clientName = quote.client 

@@ -150,6 +150,7 @@ export class QuotesService {
                   include: {
                     fabric: true,
                     category: true,
+                    images: true,
                   },
                 },
                 color: true,
