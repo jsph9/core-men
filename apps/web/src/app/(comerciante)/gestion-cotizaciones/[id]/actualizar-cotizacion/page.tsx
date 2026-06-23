@@ -125,6 +125,7 @@ export default function ActualizarCotizacion() {
   const [garmentType, setGarmentType] = useState("");
   const [fabricType, setFabricType] = useState("");
   const [price, setPrice] = useState("");
+  const [finalPrice, setFinalPrice] = useState("");
   const [estimatedDays, setEstimatedDays] = useState("");
   const [message, setMessage] = useState("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -241,6 +242,7 @@ export default function ActualizarCotizacion() {
       setGarmentType(quote.items?.[0]?.productVariant?.product?.name || quote.garmentType || "Polo Básico");
       setFabricType(quote.items?.[0]?.productVariant?.product?.fabric?.value || quote.fabricType || "Algodón");
       setPrice(quote.customerPrice || quote.estimatedPrice || quote.quotedPrice ? String(quote.customerPrice || quote.estimatedPrice || quote.quotedPrice) : "");
+      setFinalPrice(quote.finalPrice ? String(quote.finalPrice) : "");
       setMessage(quote.merchantMessage || "");
       setEstimatedDays(quote.estimatedProductionTime ? String(quote.estimatedProductionTime) : "");
       
@@ -293,7 +295,7 @@ export default function ActualizarCotizacion() {
 
   // Respond / Update quote mutation
   const respondMutation = useMutation({
-    mutationFn: (data: { quotedPrice: number; estimatedProductionTime?: number; merchantMessage?: string; items?: any[]; designs?: any[] }) => 
+    mutationFn: (data: { quotedPrice: number; finalPrice?: number; estimatedProductionTime?: number; merchantMessage?: string; items?: any[]; designs?: any[] }) => 
       apiPatch(`/api/merchant/quotes/${id}/respond`, data),
     onSuccess: () => {
       toast.success("Propuesta de cotización actualizada con éxito");
@@ -399,6 +401,108 @@ export default function ActualizarCotizacion() {
     return sum;
   }, [uniqueColors, uniqueSizes, quantities]);
 
+  // Lógica de cálculo de descuentos en tiempo real
+  const discountDetails = useMemo(() => {
+    if (!quote || !quote.availableDiscounts) {
+      return { volumeDiscount: null, volumePct: 0, seasonDiscount: null, seasonPct: 0, totalDiscountPct: 0, combinedType: 'none', showVolume: false, showSeason: false };
+    }
+
+    const { discountRules = [], seasonDiscounts = [] } = quote.availableDiscounts;
+    const qty = totalQuantity || 0;
+
+    // 1. Descuento por cantidad (Volume)
+    const volumeDiscount = discountRules.find((rule: any) => {
+      const minQty = Number(rule.minQuantity);
+      const maxQty = rule.maxQuantity !== null ? Number(rule.maxQuantity) : null;
+      return qty >= minQty && (maxQty === null || qty <= maxQty);
+    });
+    const volumePct = volumeDiscount ? Number(volumeDiscount.percentage) : 0;
+
+    // 2. Descuento por temporada (Season)
+    const applicableSeasonDiscounts = seasonDiscounts.filter((sd: any) => {
+      if (!sd.appliesTo || sd.appliesTo.length === 0) return true;
+      const currentCatName = selectedProduct?.category?.name || quote.items?.[0]?.productVariant?.product?.category?.name;
+      const currentCatId = selectedProduct?.categoryId || quote.items?.[0]?.productVariant?.product?.categoryId;
+      return sd.appliesTo.includes(currentCatName) || sd.appliesTo.includes(currentCatId);
+    });
+
+    let seasonDiscount = null;
+    let seasonPct = 0;
+    if (applicableSeasonDiscounts.length > 0) {
+      seasonDiscount = applicableSeasonDiscounts.reduce((max: any, current: any) => {
+        return Number(current.percentage) > Number(max.percentage) ? current : max;
+      }, applicableSeasonDiscounts[0]);
+      seasonPct = Number(seasonDiscount.percentage);
+    }
+
+    // 3. Combinación de descuentos
+    let totalDiscountPct = 0;
+    let combinedType = 'none';
+
+    if (volumePct > 0 && seasonPct > 0) {
+      if (seasonDiscount.isAccumulative) {
+        totalDiscountPct = Math.min(volumePct + seasonPct, 100);
+        combinedType = 'accumulative';
+      } else {
+        totalDiscountPct = Math.max(volumePct, seasonPct);
+        combinedType = 'max';
+      }
+    } else if (volumePct > 0) {
+      totalDiscountPct = volumePct;
+    } else if (seasonPct > 0) {
+      totalDiscountPct = seasonPct;
+    }
+
+    return {
+      volumeDiscount,
+      volumePct,
+      seasonDiscount,
+      seasonPct,
+      totalDiscountPct,
+      combinedType,
+      showVolume: volumePct > 0,
+      showSeason: seasonPct > 0
+    };
+  }, [quote, totalQuantity, selectedProduct]);
+
+  const handleBasePriceChange = (val: string) => {
+    setPrice(val);
+    if (!val || isNaN(Number(val))) {
+      setFinalPrice("");
+      return;
+    }
+    const base = Number(val);
+    const pct = discountDetails.totalDiscountPct;
+    const final = base * (1 - pct / 100);
+    setFinalPrice(final.toFixed(2));
+  };
+
+  const handleFinalPriceChange = (val: string) => {
+    setFinalPrice(val);
+    if (!val || isNaN(Number(val))) {
+      setPrice("");
+      return;
+    }
+    const final = Number(val);
+    const pct = discountDetails.totalDiscountPct;
+    if (pct >= 100) {
+      setPrice("0.00");
+    } else {
+      const base = final / (1 - pct / 100);
+      setPrice(base.toFixed(2));
+    }
+  };
+
+  // Recalcular el precio final si cambia el descuento (p.ej. por cambio de cantidades)
+  useEffect(() => {
+    if (price && !isNaN(Number(price))) {
+      const base = Number(price);
+      const pct = discountDetails.totalDiscountPct;
+      const final = base * (1 - pct / 100);
+      setFinalPrice(final.toFixed(2));
+    }
+  }, [discountDetails.totalDiscountPct]);
+
   const handleDesignChange = (idx: number, field: string, val: any) => {
     setDesigns(prev => {
       const copy = [...prev];
@@ -450,12 +554,24 @@ export default function ActualizarCotizacion() {
       toast.error("Por favor ingresa una cantidad de días de producción válida (número entero positivo)");
       return;
     }
-    if (!message.trim()) {
-      toast.error("Por favor ingresa un mensaje comercial");
-      return;
+    // Concatenate discounts into the message
+    let discountText = "";
+    if (discountDetails.volumePct > 0) {
+      discountText += `\n- Descuento por cantidad (${totalQuantity} unidades): ${discountDetails.volumePct}%`;
+    }
+    if (discountDetails.seasonPct > 0) {
+      discountText += `\n- Descuento por temporada: ${discountDetails.seasonPct}%`;
+    }
+    if (discountText) {
+      const typeText = discountDetails.combinedType === 'accumulative' 
+        ? " (Acumulativo)" 
+        : discountDetails.combinedType === 'max' 
+          ? " (Se aplicó el mayor)" 
+          : "";
+      discountText = `\n\n[Descuentos Aplicados${typeText}]:${discountText}\nDescuento Total: -${discountDetails.totalDiscountPct}%`;
     }
 
-    const fullMessage = `${message.trim()} (Plazo de producción: ${days} días hábiles)`;
+    const fullMessage = message.trim() + discountText;
 
     // Construir la lista de items actualizados mapeando a variante de producto
     const itemsPayload = Object.entries(quantities)
@@ -503,6 +619,7 @@ export default function ActualizarCotizacion() {
 
     respondMutation.mutate({
       quotedPrice: Number(price),
+      finalPrice: Number(finalPrice) || undefined,
       estimatedProductionTime: days,
       merchantMessage: fullMessage,
       items: itemsPayload,
@@ -1339,13 +1456,13 @@ export default function ActualizarCotizacion() {
               <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500">Precio Final (S/) *</label>
+                    <label className="text-xs font-bold text-slate-500">Valor Preciso de Cotización (S/) *</label>
                     <Input 
                       type="number" 
                       placeholder="Ej. 1250" 
                       value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      className="h-11 font-bold text-base"
+                      onChange={(e) => handleBasePriceChange(e.target.value)}
+                      className="h-11 font-semibold text-slate-800"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1358,6 +1475,50 @@ export default function ActualizarCotizacion() {
                       className="h-11"
                     />
                   </div>
+                </div>
+
+                {/* DESGLOSE DE DESCUENTOS APLICADOS */}
+                {(discountDetails.showVolume || discountDetails.showSeason) && (
+                  <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 space-y-2 mt-2">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1.5 mb-1">
+                      <Banknote className="w-3.5 h-3.5" /> Descuentos Aplicados
+                    </p>
+                    {discountDetails.showVolume && (
+                      <div className="flex justify-between items-center text-xs text-amber-900">
+                        <span>Descuento por cantidad ({totalQuantity} unidades):</span>
+                        <span className="font-bold">-{discountDetails.volumePct}%</span>
+                      </div>
+                    )}
+                    {discountDetails.showSeason && (
+                      <div className="flex justify-between items-center text-xs text-amber-900">
+                        <span>Descuento de temporada ({discountDetails.seasonDiscount?.name}):</span>
+                        <span className="font-bold">-{discountDetails.seasonPct}%</span>
+                      </div>
+                    )}
+                    <div className="border-t border-amber-200/50 pt-2 flex justify-between items-center text-amber-900 font-bold text-xs mt-1">
+                      <span>
+                        {discountDetails.combinedType === 'accumulative' ? (
+                          <span className="text-[10px] text-amber-600 font-normal italic">(Descuentos acumulados)</span>
+                        ) : discountDetails.combinedType === 'max' ? (
+                          <span className="text-[10px] text-amber-600 font-normal italic">(Se aplica el mayor, no acumulativo)</span>
+                        ) : null}{" "}
+                        Descuento Total:
+                      </span>
+                      <span>-{discountDetails.totalDiscountPct}%</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Valor final a pagar por el Cliente (S/) *</label>
+                  <Input 
+                    type="number" 
+                    placeholder="Ej. 1200" 
+                    value={finalPrice} 
+                    onChange={(e) => handleFinalPriceChange(e.target.value)} 
+                    className="h-11 bg-green-50/20 border-green-200 focus:border-green-500 text-green-700 font-bold text-base"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-0.5">Precio final calculado aplicando los descuentos.</span>
                 </div>
 
                 <div className="space-y-1">
