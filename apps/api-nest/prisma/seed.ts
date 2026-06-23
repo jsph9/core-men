@@ -101,179 +101,65 @@ async function main() {
   // ============================================================================
   // PASO 3: LOS 20 PRODUCTOS CON SUS VARIANTES Y TÉCNICAS
   // ============================================================================
-  console.log('👕 Paso 3: Generando los 21 Productos Exactos del PDF...');
+  console.log('👕 Paso 3: Generando 8 Productos Base...');
   
   const productsData = [
     { n: 'Polo Básico Cuello Redondo 20/1', c: 'Polos', f: 'Algodón Jersey 20/1', p: 20, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 8}, {n: 'Serigrafía', p: 2.5}, {n: 'Bordado', p: 12}, {n: 'Vinil Textil', p: 6}],
       v: [{c: 'Blanco', s: ['S','M','L'], stk: 100}, {c: 'Negro', s: ['S','M','L'], stk: 100}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-basico-cuello-redondo-20-1-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_f.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_b.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_r.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_l.png'
       ] },
-    { n: 'Polo Cuello Camisero (Piqué)', c: 'Polos', f: 'Algodón Piqué', p: 35, comp: '100% Algodón', g: 'TIPO A',
-      t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 10}],
-      v: [{c: 'Azul Marino', s: ['M','L'], stk: 50}, {c: 'Rojo', s: ['M','L'], stk: 30}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-cuello-camisero-pique-right.png'
-      ] },
+
     { n: 'Polo Deportivo Dry Fit', c: 'Ropa Deportiva', f: 'Dry Fit / Microfibra', p: 18, comp: '100% Poliéster', g: 'TIPO A',
       t: [{n: 'Sublimación', p: 12}, {n: 'Vinil Textil', p: 5}],
       v: [{c: 'Blanco', s: ['M','L'], stk: 200}, {c: 'Celeste', s: ['M','L'], stk: 100}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-deportivo-dry-fit-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloDeportivoDryFit_f.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloDeportivoDryFit_b.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloDeportivoDryFit_r.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloDeportivoDryFit_l.png'
       ] },
-    { n: 'Polera con Capucha (Hoodie)', c: 'Poleras', f: 'Franela Reactiva (Perchada)', p: 55, comp: '70% Algodón, 30% Poliéster', g: 'TIPO B',
+    { n: 'Polera con Cuello V', c: 'Poleras', f: 'Franela Reactiva (Perchada)', p: 55, comp: '70% Algodón, 30% Poliéster', g: 'TIPO B',
       t: [{n: 'DTF', p: 18}, {n: 'Bordado', p: 25}, {n: 'Serigrafía', p: 5}],
       v: [{c: 'Negro', s: ['M','L','XL'], stk: 80}, {c: 'Gris Jaspeado', s: ['M','L','XL'], stk: 40}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-capucha-hoodie-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_f.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_b.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_r.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_l.png'
       ] },
     { n: 'Polera Cuello Redondo (Crewneck)', c: 'Poleras', f: 'French Terry', p: 45, comp: '100% Algodón', g: 'TIPO B',
       t: [{n: 'DTF', p: 15}, {n: 'Vinil Textil', p: 10}, {n: 'Bordado', p: 15}],
-      v: [{c: 'Azul Royal', s: ['M','L','XL'], stk: 50}],
+      v: [{c: 'Negro', s: ['M','L','XL'], stk: 50}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-cuello-redondo-crewneck-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloRedondo_f.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloRedondo_b.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloRedondo_r.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloRedondo_l.png'
       ] },
-    { n: 'Casaca Cortavientos', c: 'Casacas', f: 'Taslán', p: 65, comp: '100% Nylon/Poliéster', g: 'TIPO C',
-      t: [{n: 'Vinil Textil', p: 8}, {n: 'Bordado', p: 18}],
-      v: [{c: 'Negro', s: ['M','L'], stk: 30}, {c: 'Azul Marino', s: ['M','L'], stk: 20}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-cortavientos-right.png'
-      ] },
-    { n: 'Casaca Bomber', c: 'Casacas', f: 'Taslán (con forro)', p: 85, comp: '100% Poliéster', g: 'TIPO C',
-      t: [{n: 'Bordado', p: 22}, {n: 'Vinil Textil', p: 12}],
-      v: [{c: 'Verde Militar', s: ['M','L','XL'], stk: 25}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-bomber-right.png'
-      ] },
-    { n: 'Jogger de Franela', c: 'Pantalones y Joggers', f: 'Franela Reactiva (Perchada)', p: 40, comp: '100% Algodón', g: 'TIPO D',
-      t: [{n: 'DTF', p: 6}, {n: 'Serigrafía', p: 2}],
-      v: [{c: 'Gris Jaspeado', s: ['S','M','L'], stk: 60}, {c: 'Negro', s: ['S'], stk: 0}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/jogger-de-franela-right.png'
-      ] },
+
     { n: 'Short Deportivo', c: 'Ropa Deportiva', f: 'Taslán', p: 25, comp: '100% Poliéster', g: 'TIPO D',
       t: [{n: 'Vinil Textil', p: 4}, {n: 'Sublimación', p: 5}],
-      v: [{c: 'Negro', s: ['M','L'], stk: 100}, {c: 'Azul Marino', s: ['M','L'], stk: 50}],
+      v: [{c: 'Blanco', s: ['M','L'], stk: 100}, {c: 'Azul Marino', s: ['M','L'], stk: 50}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/short-deportivo-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/ShortDeportivo_f.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/ShortDeportivo_b.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/ShortDeportivo_r.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/ShortDeportivo_l.png'
       ] },
-    { n: 'Gorra Trucker (Malla)', c: 'Gorras y Accesorios', f: 'Poliéster Spandex (Malla)', p: 15, comp: 'Frontal Poliéster / Malla Nylon', g: 'TIPO A',
-      t: [{n: 'Sublimación', p: 4}, {n: 'DTF', p: 5}],
-      v: [{c: 'Blanco', s: ['M'], stk: 300}, {c: 'Negro', s: ['M'], stk: 200}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-trucker-malla-right.png'
-      ] },
-    { n: 'Polo Oversize Urbano', c: 'Polos', f: 'Algodón Jersey 30/1', p: 30, comp: '100% Algodón Peinado', g: 'TIPO A',
+
+    { n: 'Polo Básico Clásico', c: 'Polos', f: 'Algodón Jersey 30/1', p: 30, comp: '100% Algodón Peinado', g: 'TIPO A',
       t: [{n: 'DTF', p: 15}, {n: 'Serigrafía', p: 4}],
-      v: [{c: 'Beige (Arena)', s: ['M','L','XL'], stk: 40}, {c: 'Negro', s: ['M','L','XL'], stk: 70}],
+      v: [{c: 'Gris Jaspeado', s: ['M','L','XL'], stk: 40}, {c: 'Negro', s: ['M','L','XL'], stk: 70}],
       imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-oversize-urbano-right.png'
-      ] },
-    { n: 'Polo Crop Top Mujer', c: 'Polos', f: 'Algodón Jersey 20/1', p: 18, comp: '100% Algodón', g: 'TIPO A',
-      t: [{n: 'DTF', p: 7}, {n: 'Bordado', p: 10}],
-      v: [{c: 'Blanco', s: ['S','M'], stk: 80}, {c: 'Fucsia', s: ['S','M'], stk: 60}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-crop-top-mujer-right.png'
-      ] },
-    { n: 'Polera con Cierre (Zip-up)', c: 'Poleras', f: 'French Terry', p: 60, comp: '100% Algodón', g: 'TIPO B',
-      t: [{n: 'Bordado', p: 12}, {n: 'DTF', p: 18}],
-      v: [{c: 'Gris Jaspeado', s: ['M','L'], stk: 40}, {c: 'Azul Marino', s: ['M','L'], stk: 30}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-con-cierre-zip-up-right.png'
-      ] },
-    { n: 'Casaca Denim (Jean)', c: 'Casacas', f: 'Denim', p: 95, comp: '100% Algodón', g: 'TIPO C',
-      t: [{n: 'Bordado', p: 30}, {n: 'DTF', p: 20}],
-      v: [{c: 'Celeste', s: ['M','L','XL'], stk: 20}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/casaca-denim-jean-right.png'
-      ] },
-    { n: 'Polo Manga Larga', c: 'Polos', f: 'Algodón Jersey 20/1', p: 25, comp: '100% Algodón', g: 'TIPO B',
-      t: [{n: 'Serigrafía', p: 3.5}, {n: 'DTF', p: 12}],
-      v: [{c: 'Negro', s: ['M','L'], stk: 90}, {c: 'Blanco', s: ['M','L'], stk: 80}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polo-manga-larga-right.png'
-      ] },
-    { n: 'Bividí Deportivo', c: 'Ropa Deportiva', f: 'Dry Fit / Microfibra', p: 15, comp: '100% Poliéster', g: 'TIPO A',
-      t: [{n: 'Sublimación', p: 6}, {n: 'Vinil Textil', p: 4}],
-      v: [{c: 'Rojo', s: ['S','M','L'], stk: 150}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/bividi-deportivo-right.png'
-      ] },
-    { n: 'Pantalón Cargo', c: 'Pantalones y Joggers', f: 'Taslán', p: 50, comp: '100% Poliéster', g: 'TIPO D',
-      t: [{n: 'Bordado', p: 10}, {n: 'DTF', p: 8}],
-      v: [{c: 'Verde Militar', s: ['M','L'], stk: 40}, {c: 'Negro', s: ['M','L'], stk: 50}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/pantalon-cargo-right.png'
-      ] },
-    { n: 'Polera Crop Mujer', c: 'Poleras', f: 'Franela Reactiva (Perchada)', p: 45, comp: '100% Algodón', g: 'TIPO B',
-      t: [{n: 'DTF', p: 9}, {n: 'Bordado', p: 12}],
-      v: [{c: 'Rosado', s: ['S','M'], stk: 30}, {c: 'Turquesa', s: ['S','M'], stk: 20}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/polera-crop-mujer-right.png'
-      ] },
-    { n: 'Gorra Drill Básica', c: 'Gorras y Accesorios', f: 'Algodón Piqué (Drill)', p: 18, comp: '100% Algodón', g: 'TIPO A',
-      t: [{n: 'Bordado', p: 8}, {n: 'DTF', p: 6}],
-      v: [{c: 'Negro', s: ['M'], stk: 120}, {c: 'Azul Marino', s: ['M'], stk: 90}, {c: 'Rojo', s: ['M'], stk: 60}, {c: 'Blanco', s: ['M'], stk: 50}],
-      imgs: [
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-front.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-back.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-left.png',
-        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/gorra-drill-basica-right.png'
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoClasico_f.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoClasico_b.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoClasico_r.png',
+        'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoClasico_l.png'
       ] },
     { n: 'Polo Camisero con Aberturas', c: 'Polos', f: 'Algodón Jersey 30/1', p: 22, comp: '100% Algodón', g: 'TIPO A',
       t: [{n: 'DTF', p: 8}, {n: 'Serigrafía', p: 2.5}],
@@ -357,14 +243,14 @@ async function main() {
   const cart2 = await prisma.cart.create({ data: { userId: client2.id } }); // Carrito 2 Activo
   await prisma.cartItem.createMany({ data: [
     { cartId: cart2.id, productVariantId: await getVariant('Polo Básico Cuello Redondo 20/1', 'Blanco', 'L'), quantity: 10 },
-    { cartId: cart2.id, productVariantId: await getVariant('Gorra Drill Básica', 'Negro', 'M'), quantity: 5 }
+    { cartId: cart2.id, productVariantId: await getVariant('Polo Básico Cuello Redondo 20/1', 'Negro', 'M'), quantity: 5 }
   ]});
 
   // Pedido 1.1 (Entregado - Cliente 1)
   const o1 = await prisma.order.create({
     data: {
       userId: client1.id, status: OrderStatus.DELIVERED, totalAmount: 35.00, receiptType: ReceiptType.BOLETA,
-      items: { create: [{ productVariantId: await getVariant('Polo Cuello Camisero (Piqué)', 'Rojo', 'M'), quantity: 1, unitPrice: 35.00, subtotal: 35.00 }] },
+      items: { create: [{ productVariantId: await getVariant('Polo Camisero Clásico', 'Negro', 'M'), quantity: 1, unitPrice: 35.00, subtotal: 35.00 }] },
       payment: { create: { stripePaymentId: 'pay_yape_01', amount: 35.00, status: PaymentStatus.CONFIRMED, method: PaymentMethod.YAPE } },
       statusHistory: { create: [{ toStatus: OrderStatus.REGISTERED, changedBy: client1.id }, { toStatus: OrderStatus.IN_PREPARATION, changedBy: merchant.id, reason: 'Pedido validado, separando de almacén.' }, { toStatus: OrderStatus.DELIVERED, changedBy: merchant.id, reason: 'Entregado presencialmente en tienda.' }]}
     }
@@ -374,7 +260,7 @@ async function main() {
   await prisma.order.create({
     data: {
       userId: client1.id, status: OrderStatus.READY_FOR_PICKUP, totalAmount: 95.00, receiptType: ReceiptType.BOLETA,
-      items: { create: [{ productVariantId: await getVariant('Casaca Denim (Jean)', 'Celeste', 'M'), quantity: 1, unitPrice: 95.00, subtotal: 95.00 }] },
+      items: { create: [{ productVariantId: await getVariant('Polo Deportivo Dry Fit', 'Celeste', 'M'), quantity: 1, unitPrice: 95.00, subtotal: 95.00 }] },
       payment: { create: { stripePaymentId: 'pay_card_01', amount: 95.00, status: PaymentStatus.CONFIRMED, method: PaymentMethod.CARD } },
       statusHistory: { create: [{ toStatus: OrderStatus.REGISTERED, changedBy: client1.id }, { toStatus: OrderStatus.IN_PREPARATION, changedBy: 'Sistema', reason: 'Pago confirmado vía Stripe.' }, { toStatus: OrderStatus.READY_FOR_PICKUP, changedBy: merchant.id, reason: 'Casaca empaquetada. Esperando al cliente en el local.' }]}
     }
@@ -384,7 +270,7 @@ async function main() {
   await prisma.order.create({
     data: {
       userId: client1.id, status: OrderStatus.CANCELLED, totalAmount: 45.00, receiptType: ReceiptType.BOLETA, cancelReason: 'Expiró el tiempo de espera para la transferencia bancaria (48 hrs).',
-      items: { create: [{ productVariantId: await getVariant('Polera Crop Mujer', 'Rosado', 'M'), quantity: 1, unitPrice: 45.00, subtotal: 45.00 }] },
+      items: { create: [{ productVariantId: await getVariant('Polera con Cuello V', 'Negro', 'M'), quantity: 1, unitPrice: 45.00, subtotal: 45.00 }] },
       payment: { create: { stripePaymentId: 'pay_transf_01', amount: 45.00, status: PaymentStatus.FAILED, method: PaymentMethod.TRANSFER } },
       statusHistory: { create: [{ toStatus: OrderStatus.REGISTERED, changedBy: client1.id }, { toStatus: OrderStatus.CANCELLED, changedBy: 'Sistema', reason: 'Cancelación automática por tiempo de pago expirado.' }]}
     }
@@ -394,7 +280,7 @@ async function main() {
   await prisma.order.create({
     data: {
       userId: client2.id, status: OrderStatus.DELIVERED, totalAmount: 300.00, receiptType: ReceiptType.FACTURA,
-      items: { create: [{ productVariantId: await getVariant('Gorra Trucker (Malla)', 'Blanco', 'M'), quantity: 20, unitPrice: 15.00, subtotal: 300.00 }] },
+      items: { create: [{ productVariantId: await getVariant('Polo Deportivo Dry Fit', 'Blanco', 'M'), quantity: 20, unitPrice: 15.00, subtotal: 300.00 }] },
       payment: { create: { stripePaymentId: 'pay_transf_02', amount: 300.00, status: PaymentStatus.CONFIRMED, method: PaymentMethod.TRANSFER } },
       statusHistory: { create: [{ toStatus: OrderStatus.REGISTERED, changedBy: client2.id }, { toStatus: OrderStatus.IN_PREPARATION, changedBy: merchant.id, reason: 'Voucher validado. Embalando caja.' }, { toStatus: OrderStatus.READY_FOR_PICKUP, changedBy: merchant.id }, { toStatus: OrderStatus.DELIVERED, changedBy: merchant.id, reason: 'Despachado con motorizado.' }]}
     }
@@ -404,7 +290,7 @@ async function main() {
   await prisma.order.create({
     data: {
       userId: client2.id, status: OrderStatus.IN_PREPARATION, totalAmount: 250.00, receiptType: ReceiptType.FACTURA,
-      items: { create: [{ productVariantId: await getVariant('Pantalón Cargo', 'Verde Militar', 'L'), quantity: 5, unitPrice: 50.00, subtotal: 250.00 }] },
+      items: { create: [{ productVariantId: await getVariant('Short Deportivo', 'Azul Marino', 'L'), quantity: 5, unitPrice: 50.00, subtotal: 250.00 }] },
       payment: { create: { stripePaymentId: 'pay_yape_02', amount: 250.00, status: PaymentStatus.CONFIRMED, method: PaymentMethod.YAPE } },
       statusHistory: { create: [{ toStatus: OrderStatus.REGISTERED, changedBy: client2.id }, { toStatus: OrderStatus.IN_PREPARATION, changedBy: merchant.id, reason: 'Confirmación de Yape recibida. Planchando pantalones.' }]}
     }
@@ -433,9 +319,9 @@ async function main() {
   // Cotización 1.2 (Inviable)
   await prisma.quote.create({
     data: {
-      clientId: client1.id, totalQuantity: 2, message: 'Quiero 2 casacas bordadas con mi nombre.', isVisited: true, viabilityStatus: ViabilityStatus.NONVIABLE, clientFormalizationStatus: ClientFormalizationStatus.REJECTED, customerResponseStatus: CustomerResponseStatus.PENDING, status: QuoteMacroStatus.CANCELLED, unfeasibleReason: 'El bordado requiere un mínimo de 12 unidades por el costo de matriz.', estimatedPrice: 150.00,
-      items: { create: [{ productVariantId: await getVariant('Casaca Bomber', 'Verde Militar', 'L'), quantity: 2 }] },
-      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/bomber.png', logoUrl: '/name.png', positionX: 30, positionY: 30, width: 8, height: 4, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
+      clientId: client1.id, totalQuantity: 2, message: 'Quiero 2 poleras bordadas con mi nombre.', isVisited: true, viabilityStatus: ViabilityStatus.NONVIABLE, clientFormalizationStatus: ClientFormalizationStatus.REJECTED, customerResponseStatus: CustomerResponseStatus.PENDING, status: QuoteMacroStatus.CANCELLED, unfeasibleReason: 'El bordado requiere un mínimo de 12 unidades por el costo de matriz.', estimatedPrice: 150.00,
+      items: { create: [{ productVariantId: await getVariant('Polera con Cuello V', 'Negro', 'L'), quantity: 2 }] },
+      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/polera.png', logoUrl: '/name.png', positionX: 30, positionY: 30, width: 8, height: 4, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'PENDING', changedBy: client1.id }, { changedField: 'VIABILITY', oldValue: 'PENDING', newValue: 'NONVIABLE', changedBy: merchant.id }, { changedField: 'FORMALIZATION', oldValue: 'PENDING', newValue: 'REJECTED', changedBy: 'Sistema' }, { changedField: 'STATUS', oldValue: 'PENDING', newValue: 'CANCELLED', changedBy: 'Sistema' }]}
     }
   });
@@ -444,7 +330,7 @@ async function main() {
   await prisma.quote.create({
     data: {
       clientId: client2.id, totalQuantity: 100, message: 'Polos piqué institucionales para los supervisores.', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED, customerResponseStatus: CustomerResponseStatus.CONFIRMED, status: QuoteMacroStatus.DELIVERED, estimatedPrice: 4300.00, customerPrice: 4300.00, finalPrice: 4300.00, estimatedProductionTime: 10,
-      items: { create: [{ productVariantId: await getVariant('Polo Cuello Camisero (Piqué)', 'Azul Marino', 'M'), quantity: 50 }, { productVariantId: await getVariant('Polo Cuello Camisero (Piqué)', 'Azul Marino', 'L'), quantity: 50 }] },
+      items: { create: [{ productVariantId: await getVariant('Polo Camisero Clásico', 'Negro', 'M'), quantity: 50 }, { productVariantId: await getVariant('Polo Camisero Clásico', 'Negro', 'L'), quantity: 50 }] },
       designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/front.png', logoUrl: '/logo.png', positionX: 45, positionY: 35, width: 8, height: 8, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.LEFTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/sL.png', logoUrl: '/l.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.RIGHTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/sR.png', logoUrl: '/r.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       payments: { create: [{ totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FAILED, amountPaid: 0, paymentMethod: PaymentMethod.CARD }, { totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FULL_PAYMENT, amountPaid: 4300.00, paymentMethod: PaymentMethod.TRANSFER }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'DELIVERED', changedBy: merchant.id }]}
@@ -456,7 +342,7 @@ async function main() {
     data: {
       id: "c28fd975-b6b1-4e0c-8c90-ed7581a806a6", // ID fijo con prefijo C28FD9
       clientId: client2.id, totalQuantity: 200, message: 'Necesitamos poleras para campaña de invierno. ¿Si llevamos 200 nos mejoran el precio del DTF?', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, customerResponseStatus: CustomerResponseStatus.PENDING, status: QuoteMacroStatus.IN_REVIEW, estimatedPrice: 11000.00,
-      items: { create: [{ productVariantId: await getVariant('Polera con Capucha (Hoodie)', 'Negro', 'L'), quantity: 100 }, { productVariantId: await getVariant('Polera con Capucha (Hoodie)', 'Gris Jaspeado', 'XL'), quantity: 100 }] },
+      items: { create: [{ productVariantId: await getVariant('Polera con Cuello V', 'Negro', 'L'), quantity: 100 }, { productVariantId: await getVariant('Polera con Cuello V', 'Gris Jaspeado', 'XL'), quantity: 100 }] },
       designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: '/f.png', logoUrl: '/l1.png', positionX: 40, positionY: 40, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.BACK, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: '/b.png', logoUrl: '/l2.png', positionX: 50, positionY: 50, width: 30, height: 30, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'PENDING', changedBy: client2.id }, { changedField: 'VIABILITY', oldValue: 'PENDING', newValue: 'VIABLE', changedBy: admin.id }]}
     }
