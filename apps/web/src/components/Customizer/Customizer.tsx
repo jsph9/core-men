@@ -392,23 +392,15 @@ export default function Customizer({
         let initialWidth = width;
         let initialHeight = height;
 
-        const logoRatio = logoImgObj.width / logoImgObj.height;
-        const currentRatio = (initialWidth && initialHeight) ? (initialWidth / initialHeight) : 1;
-        const ratioDiff = Math.abs(currentRatio - logoRatio);
-
-        if (
-          initialWidth === undefined || 
-          initialHeight === undefined || 
-          initialWidth <= 0 || 
-          initialHeight <= 0 || 
-          ratioDiff > 0.05
-        ) {
+        // Autocalcular usando la proporción de la imagen solo si no se enviaron dimensiones válidas
+        if (!initialWidth || !initialHeight || initialWidth <= 0 || initialHeight <= 0) {
+          const logoRatio = logoImgObj.width / logoImgObj.height;
           if (logoRatio > 1) {
-            initialWidth = width && width > 0 ? width : 120;
-            initialHeight = initialWidth / logoRatio;
+            initialWidth = 120;
+            initialHeight = 120 / logoRatio;
           } else {
-            initialHeight = height && height > 0 ? height : 120;
-            initialWidth = initialHeight * logoRatio;
+            initialHeight = 120;
+            initialWidth = 120 * logoRatio;
           }
           
           if (onChange) {
@@ -558,6 +550,37 @@ export default function Customizer({
       currentTranslateRef.current = { x: 0, y: 0 };
     }
   }, [zoom, baseGarmentUrl]);
+
+  // Actualizar la posición, tamaño y rotación del logo de forma reactiva cuando cambien las props del padre
+  useEffect(() => {
+    const logo = logoRef.current;
+    if (!logo || !stageRef.current || !layerRef.current) return;
+
+    // Calcular la relación de escala de coordenadas (Pantalla vs. Base de datos)
+    const scaleXRatio = stageRef.current.width() / (canvasWidth || 500);
+    const scaleYRatio = stageRef.current.height() / (canvasHeight || 500);
+
+    // Aplicar los nuevos valores al nodo de Konva
+    if (positionX !== undefined) logo.x(positionX * scaleXRatio);
+    if (positionY !== undefined) logo.y(positionY * scaleYRatio);
+    if (width !== undefined) logo.width(width * scaleXRatio);
+    if (height !== undefined) logo.height(height * scaleYRatio);
+    if (rotation !== undefined) logo.rotation(rotation);
+
+    // Forzar actualización del transformador visual si está seleccionado
+    const tr = transformerRef.current;
+    if (tr && tr.nodes().length > 0) {
+      tr.forceUpdate();
+    }
+
+    // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
+    redrawLogoCanvas();
+    if (logoCanvasRef.current) {
+      logo.image(logoCanvasRef.current);
+    }
+    
+    layerRef.current.batchDraw();
+  }, [positionX, positionY, width, height, rotation, canvasWidth, canvasHeight]);
 
   // Manejar el cambio de modo (selección vs mano)
   useEffect(() => {
