@@ -63,22 +63,50 @@ const getGarmentImageForPlacement = (placement: string, product: any, defaultUrl
   if (!product || !product.images || product.images.length === 0) {
     return defaultUrl || "/prenda-base.png";
   }
+  
+  const images = product.images;
+  
   if (placement === "FRONT") {
-    const primary = product.images.find((img: any) => img.isPrimary);
-    return primary?.url || product.images[0]?.url || defaultUrl;
+    const primary = images.find((img: any) => img.isPrimary);
+    return primary?.url || images[0]?.url || defaultUrl;
   }
+  
   if (placement === "BACK") {
-    const backImg = product.images.find((img: any) => img.url.includes("back") || img.url.includes("espalda"));
-    return backImg?.url || product.images[1]?.url || product.images[0]?.url || defaultUrl;
+    const backImg = images.find((img: any) => {
+      const urlLower = (img.url || "").toLowerCase();
+      return urlLower.includes("back") || urlLower.includes("espalda") || urlLower.includes("posterior");
+    });
+    return backImg?.url || images[1]?.url || images[0]?.url || defaultUrl;
   }
+  
   if (placement === "LEFTSLEEVE") {
-    const rightImg = product.images.find((img: any) => img.url.includes("right") || img.url.includes("der"));
-    return rightImg?.url || product.images[3]?.url || product.images[0]?.url || defaultUrl;
+    const leftImg = images.find((img: any) => {
+      const urlLower = (img.url || "").toLowerCase();
+      return urlLower.includes("left") || urlLower.includes("izq") || urlLower.includes("manga-izq");
+    });
+    if (leftImg) return leftImg.url;
+    
+    const rightImg = images.find((img: any) => {
+      const urlLower = (img.url || "").toLowerCase();
+      return urlLower.includes("right") || urlLower.includes("der") || urlLower.includes("manga-der");
+    });
+    return rightImg?.url || images[3]?.url || images[0]?.url || defaultUrl;
   }
+  
   if (placement === "RIGHTSLEEVE") {
-    const leftImg = product.images.find((img: any) => img.url.includes("left") || img.url.includes("izq"));
-    return leftImg?.url || product.images[2]?.url || product.images[0]?.url || defaultUrl;
+    const rightImg = images.find((img: any) => {
+      const urlLower = (img.url || "").toLowerCase();
+      return urlLower.includes("right") || urlLower.includes("der") || urlLower.includes("manga-der");
+    });
+    if (rightImg) return rightImg.url;
+    
+    const leftImg = images.find((img: any) => {
+      const urlLower = (img.url || "").toLowerCase();
+      return urlLower.includes("left") || urlLower.includes("izq") || urlLower.includes("manga-izq");
+    });
+    return leftImg?.url || images[2]?.url || images[0]?.url || defaultUrl;
   }
+  
   return defaultUrl;
 };
 
@@ -152,10 +180,20 @@ export default function ActualizarCotizacion() {
 
   const techniquesList = useMemo(() => adminAttributes?.techniques || [], [adminAttributes]);
 
+  // Cargar detalles completos del producto seleccionado (por ID) para asegurar sus imágenes/variantes
+  const { data: selectedProductDetail } = useQuery<any>({
+    queryKey: ["product-detail", selectedProductId],
+    queryFn: async () => {
+      if (!selectedProductId) return null;
+      return apiGet(`/api/products/${selectedProductId}`);
+    },
+    enabled: !!selectedProductId
+  });
+
   // Prenda seleccionada actualmente
   const selectedProduct = useMemo(() => {
-    return detailedProducts?.find((p: any) => p.id === selectedProductId) || null;
-  }, [detailedProducts, selectedProductId]);
+    return selectedProductDetail || detailedProducts?.find((p: any) => p.id === selectedProductId) || null;
+  }, [detailedProducts, selectedProductId, selectedProductDetail]);
 
   // Obtener las imágenes de la prenda seleccionada
   const productImages = useMemo(() => {
@@ -240,6 +278,18 @@ export default function ActualizarCotizacion() {
       }
     }
   }, [quote]);
+
+  // Sincronizar las URLs de la prenda base cuando cambie la prenda seleccionada
+  useEffect(() => {
+    if (selectedProduct && selectedProduct.images && selectedProduct.images.length > 0) {
+      setDesigns(prev => 
+        prev.map(d => ({
+          ...d,
+          baseGarmentUrl: getGarmentImageForPlacement(d.placement, selectedProduct, d.baseGarmentUrl)
+        }))
+      );
+    }
+  }, [selectedProduct]);
 
   // Respond / Update quote mutation
   const respondMutation = useMutation({
