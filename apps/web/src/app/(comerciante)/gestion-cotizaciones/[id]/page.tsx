@@ -901,6 +901,7 @@ export default function DetalleCotizacion() {
                           canvasHeight={matchingPreviewDesign.canvasHeight}
                           readOnly={true}
                           isSimulationActive={true}
+                          showEmbroideryArea={true}
                         />
                       </div>
                     ) : (

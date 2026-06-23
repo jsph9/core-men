@@ -16,8 +16,9 @@ interface CustomizerProps {
   backgroundUrl?: string;
   zoom?: number;
   mode?: 'select' | 'pan';
-  isSimulationActive?: boolean;
   readOnly?: boolean;
+  showEmbroideryArea?: boolean;
+  isSimulationActive?: boolean;
   onStageReady?: (stage: Konva.Stage | null) => void;
   onChange?: (updates: {
     positionX: number;
@@ -111,6 +112,7 @@ export default function Customizer({
   mode,
   isSimulationActive = true,
   readOnly = false,
+  showEmbroideryArea = false,
   onStageReady,
   onChange,
 }: CustomizerProps) {
@@ -132,6 +134,7 @@ export default function Customizer({
   const shadowOverlayObjRef = useRef<HTMLImageElement | null>(null);
   const logoCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cachedMaskRef = useRef<any>(null);
+  const embroideryRectRef = useRef<Konva.Rect | null>(null);
 
   const isDraggingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
@@ -278,8 +281,12 @@ export default function Customizer({
     });
     logoGroupRef.current = logoGroup;
 
+    // Grupo para guías de personalización (Bordado/Estampado)
+    const guidesGroup = new Konva.Group({ listening: false });
+
     layer.add(bgGroup);
     layer.add(logoGroup);
+    layer.add(guidesGroup);
 
     const tr = new Konva.Transformer({
       enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
@@ -441,6 +448,24 @@ export default function Customizer({
           tr.nodes([logo]);
         }
 
+        // Si showEmbroideryArea está activo, crear el rectángulo indicador
+        if (showEmbroideryArea) {
+          const embRect = new Konva.Rect({
+            x: logo.x(),
+            y: logo.y(),
+            width: logo.width(),
+            height: logo.height(),
+            rotation: logo.rotation(),
+            stroke: '#f97316', // naranja
+            strokeWidth: 2,
+            dash: [6, 4],
+            fill: 'rgba(249, 115, 22, 0.08)',
+            listening: false,
+          });
+          embroideryRectRef.current = embRect;
+          guidesGroup.add(embRect);
+        }
+
         // Dibujar el canvas por primera vez con el logo
         redrawLogoCanvas();
         if (logoCanvasRef.current) {
@@ -571,6 +596,16 @@ export default function Customizer({
     const tr = transformerRef.current;
     if (tr && tr.nodes().length > 0) {
       tr.forceUpdate();
+    }
+
+    // Actualizar el rectángulo del área de bordado de forma reactiva si existe
+    const embRect = embroideryRectRef.current;
+    if (embRect) {
+      if (positionX !== undefined) embRect.x(positionX * scaleXRatio);
+      if (positionY !== undefined) embRect.y(positionY * scaleYRatio);
+      if (width !== undefined) embRect.width(width * scaleXRatio);
+      if (height !== undefined) embRect.height(height * scaleYRatio);
+      if (rotation !== undefined) embRect.rotation(rotation);
     }
 
     // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
