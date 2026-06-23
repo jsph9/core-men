@@ -1171,6 +1171,46 @@ export default function DetalleCotizacion() {
               </div>
             </div>
           </div>
+
+          {/* SECCIÓN: MENSAJES ENVIADOS */}
+          {(quote.unfeasibleReason || quote.rejectionReason || quote.merchantMessage) && (
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm flex flex-col mt-6">
+              <div className="p-4 border-b border-slate-100 bg-slate-50">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-indigo-500" /> 
+                  Mensajes Enviados
+                </h3>
+              </div>
+              <div className="p-6 space-y-4">
+                {quote.unfeasibleReason && (
+                  <div className="bg-red-50/50 border border-red-100 rounded-lg p-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 mb-1.5 flex items-center gap-1.5">
+                      <XCircle className="w-4 h-4 text-red-500" /> Razón de Inviabilidad
+                    </h4>
+                    <p className="text-sm text-slate-700 font-medium whitespace-pre-wrap">{quote.unfeasibleReason}</p>
+                  </div>
+                )}
+                
+                {quote.rejectionReason && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
+                      <XCircle className="w-4 h-4 text-slate-500" /> Razón de Rechazo
+                    </h4>
+                    <p className="text-sm text-slate-700 font-medium whitespace-pre-wrap">{quote.rejectionReason}</p>
+                  </div>
+                )}
+                
+                {quote.merchantMessage && (
+                  <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-1.5 flex items-center gap-1.5">
+                      <CheckCircle className="w-4 h-4 text-emerald-500" /> Mensaje de Aceptación
+                    </h4>
+                    <p className="text-sm text-slate-700 font-medium whitespace-pre-wrap">{quote.merchantMessage}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
