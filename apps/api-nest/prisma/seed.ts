@@ -621,7 +621,7 @@ async function main() {
           { 
             placement: DesignPlacement.BACK, 
             techniqueId: getId(dbTechs, 'name', 'Bordado')!, 
-            baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782055281183-250990858.png', 
+            baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/piqsels.com-id-zjjzo.png', 
             logoUrl: '/college_crest.png', 
             positionX: 50, 
             positionY: 35, 
