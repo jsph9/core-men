@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 
 const CustomizerDinamico = dynamic(
@@ -360,6 +360,8 @@ export default function DetalleCotizacion() {
   const [proposalEstimatedDays, setProposalEstimatedDays] = useState("");
   const [proposalMessage, setProposalMessage] = useState("");
 
+  const [activePreviewPlacement, setActivePreviewPlacement] = useState<string>("");
+
   const { data: quote, isLoading } = useQuery<any>({
     queryKey: ["quote-detail", id],
     queryFn: async () => {
@@ -380,6 +382,26 @@ export default function DetalleCotizacion() {
     });
     return counts;
   }, [quote?.designs]);
+
+  const designedPlacements = useMemo(() => {
+    if (!quote?.designs) return [];
+    return quote.designs;
+  }, [quote?.designs]);
+
+  useEffect(() => {
+    if (designedPlacements.length > 0) {
+      const exists = designedPlacements.some((d: any) => d.placement === activePreviewPlacement);
+      if (!exists) {
+        setActivePreviewPlacement(designedPlacements[0].placement);
+      }
+    } else {
+      setActivePreviewPlacement("");
+    }
+  }, [designedPlacements, activePreviewPlacement]);
+
+  const matchingPreviewDesign = useMemo(() => {
+    return designedPlacements.find((d: any) => d.placement === activePreviewPlacement);
+  }, [designedPlacements, activePreviewPlacement]);
 
   const respondQuote = useMutation({
     mutationFn: (data: { quotedPrice: number; merchantMessage?: string }) => 
@@ -853,86 +875,176 @@ export default function DetalleCotizacion() {
               </h2>
             </div>
             
-            <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-8">
-              <div className="bg-white rounded-xl p-5 flex flex-col">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
-                  <Eye className="h-4 w-4 text-blue-600" /> Vista Previa de Diseño (Con guías)
-                </h3>
-                <div className="w-full bg-slate-100 rounded-lg min-h-[300px] flex flex-col items-center justify-center mb-4 relative overflow-hidden border border-dashed border-slate-300">
-                  <div className="absolute border-2 border-dashed border-orange-500 w-32 h-20 bg-orange-500/10 flex items-center justify-center z-20">
-                    <span className="text-[10px] font-bold text-orange-600 uppercase bg-white/80 px-1 rounded">Área de Bordado</span>
+            <div className="p-6 flex flex-col gap-8">
+              {/* FILA 1: Dos columnas (Vista Previa Prenda vs Logotipo Utilizado) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Columna 1: Vista Previa de la prenda con logo */}
+                <div className="bg-white rounded-xl p-5 flex flex-col border border-slate-800 bg-slate-950/20">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
+                    <Eye className="h-4 w-4 text-blue-600" /> Vista Previa de Diseño (Con relieve y posición)
+                  </h3>
+                  <div 
+                    className="w-full bg-white rounded-lg border border-slate-200 flex items-center justify-center relative overflow-hidden"
+                    style={{ height: '350px' }}
+                  >
+                    {matchingPreviewDesign ? (
+                      <div className="scale-[0.68] origin-center flex items-center justify-center shrink-0" key={activePreviewPlacement}>
+                        <CustomizerDinamico
+                          baseGarmentUrl={matchingPreviewDesign.baseGarmentUrl}
+                          logoUrl={matchingPreviewDesign.logoUrl}
+                          positionX={matchingPreviewDesign.positionX}
+                          positionY={matchingPreviewDesign.positionY}
+                          width={matchingPreviewDesign.width}
+                          height={matchingPreviewDesign.height}
+                          rotation={matchingPreviewDesign.rotation}
+                          canvasWidth={matchingPreviewDesign.canvasWidth}
+                          canvasHeight={matchingPreviewDesign.canvasHeight}
+                          readOnly={true}
+                          isSimulationActive={true}
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 text-sm">No hay vista previa disponible</span>
+                    )}
                   </div>
-                  <span className="text-slate-400 z-10 relative bg-slate-100/80 px-4 py-2 rounded">Plantilla Base Técnica</span>
+                  {/* Miniaturas: SOLO aparecen las vistas que están relacionadas con un diseño */}
+                  {designedPlacements.length > 1 && (
+                    <div className="flex gap-2.5 mt-3 overflow-x-auto pb-1">
+                      {designedPlacements.map((d: any) => {
+                        const isSelected = activePreviewPlacement === d.placement;
+                        return (
+                          <div 
+                            key={d.id}
+                            onClick={() => setActivePreviewPlacement(d.placement)}
+                            className={`h-14 w-14 bg-white rounded-lg border-2 cursor-pointer shrink-0 overflow-hidden relative transition-all flex items-center justify-center p-0.5 ${
+                              isSelected 
+                                ? 'border-blue-500 shadow-md scale-[1.03]' 
+                                : 'border-slate-200 hover:border-blue-300'
+                            }`}
+                            title={translatePlacement(d.placement)}
+                          >
+                            <img 
+                              src={d.baseGarmentUrl || "/prenda-base.png"} 
+                              alt={d.placement} 
+                              className="max-w-full max-h-full object-contain rounded"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-3">
-                  <div className="h-14 w-14 bg-slate-900 rounded border-2 border-orange-500 cursor-pointer shrink-0"></div>
-                  <div className="h-14 w-14 bg-slate-100 rounded border border-slate-200 cursor-pointer shrink-0"></div>
-                  <div className="h-14 w-14 bg-slate-50 rounded border border-slate-200 cursor-pointer flex items-center justify-center text-slate-400 shrink-0">+</div>
+
+                {/* Columna 2: Logotipo utilizado únicamente */}
+                <div className="bg-white rounded-xl p-5 flex flex-col border border-slate-800 bg-slate-950/20">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-3">
+                    <ImageIcon className="h-4 w-4 text-blue-600" /> Logotipo Solicitado por el Cliente
+                  </h3>
+                  <div 
+                    className="w-full bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center relative overflow-hidden p-4"
+                    style={{ height: '350px' }}
+                  >
+                    {matchingPreviewDesign?.logoUrl ? (
+                      <img 
+                        src={matchingPreviewDesign.logoUrl} 
+                        alt="Logotipo del cliente" 
+                        className="max-w-full max-h-full object-contain shadow-sm border border-slate-200/50 bg-white p-2 rounded"
+                      />
+                    ) : (
+                      <span className="text-slate-400 text-sm">No hay logotipo disponible</span>
+                    )}
+                  </div>
+                  {/* Descarga y metadatos */}
+                  {matchingPreviewDesign?.logoUrl && (
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                      <span>Ubicación: <strong className="text-slate-800">{translatePlacement(matchingPreviewDesign.placement)}</strong></span>
+                      <a 
+                        href={matchingPreviewDesign.logoUrl} 
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center gap-1 font-semibold"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Descargar Logo original
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4">
-                <div className="bg-white rounded-xl p-5 flex-1">
-                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
-                    <FileText className="h-4 w-4 text-blue-600" /> Especificaciones Técnicas
-                  </h3>
-                  
-                  <div className="overflow-x-auto mb-6">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-slate-500 font-semibold bg-slate-50 border-b border-slate-100 uppercase">
+              {/* FILA 2: Especificaciones Técnicas (Abajo, ancho completo) */}
+              <div className="bg-white rounded-xl p-5 flex flex-col">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4">
+                  <FileText className="h-4 w-4 text-blue-600" /> Especificaciones Técnicas
+                </h3>
+                
+                <div className="overflow-x-auto mb-4">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-500 font-semibold bg-slate-50 border-b border-slate-100 uppercase">
+                      <tr>
+                        <th className="py-2 px-2 whitespace-nowrap">Ubicación</th>
+                        <th className="py-2 px-2 whitespace-nowrap">Método / Técnica</th>
+                        <th className="py-2 px-2 whitespace-nowrap">Especificaciones de Medidas</th>
+                        <th className="py-2 px-2 whitespace-nowrap">Rotación</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {designedPlacements.length === 0 ? (
                         <tr>
-                          <th className="py-2 px-2 whitespace-nowrap">Ubicación</th>
-                          <th className="py-2 px-2 whitespace-nowrap">Método / Técnica</th>
-                          <th className="py-2 px-2 whitespace-nowrap">Especificaciones</th>
-                          <th className="py-2 px-2 whitespace-nowrap">Rotación</th>
+                          <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
+                            No hay especificaciones de personalización registradas.
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {!quote.designs || quote.designs.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="py-6 text-center text-slate-400 text-xs">
-                              No hay especificaciones de personalización registradas.
+                      ) : (
+                        designedPlacements.map((design: any) => (
+                          <tr key={design.id}>
+                            <td className="py-3 px-2 font-medium text-slate-800 whitespace-nowrap">
+                              {translatePlacement(design.placement)}
+                            </td>
+                            <td className="py-3 px-2 whitespace-nowrap">
+                              <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${getTechniqueBadgeClass(design.technique?.name)}`}>
+                                {design.technique?.name || "Sin especificar"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-slate-600 whitespace-nowrap">
+                              {Math.round(design.width)}px x {Math.round(design.height)}px
+                            </td>
+                            <td className="py-3 px-2 text-slate-600 whitespace-nowrap">
+                              {design.rotation ? Math.round(design.rotation) : 0}°
                             </td>
                           </tr>
-                        ) : (
-                          quote.designs.map((design: any) => (
-                            <tr key={design.id}>
-                              <td className="py-3 px-2 font-medium text-slate-800 whitespace-nowrap">
-                                {translatePlacement(design.placement)}
-                              </td>
-                              <td className="py-3 px-2 whitespace-nowrap">
-                                <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${getTechniqueBadgeClass(design.technique?.name)}`}>
-                                  {design.technique?.name || "Sin especificar"}
-                                </span>
-                              </td>
-                              <td className="py-3 px-2 text-slate-600 whitespace-nowrap">
-                                {Math.round(design.width)}px x {Math.round(design.height)}px
-                              </td>
-                              <td className="py-3 px-2 text-slate-600 whitespace-nowrap">
-                                {design.rotation ? Math.round(design.rotation) : 0}°
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between flex-wrap gap-4">
+                {matchingPreviewDesign?.logoUrl && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-center justify-between flex-wrap gap-4 mt-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-white border border-slate-200 rounded flex items-center justify-center p-1 shadow-sm shrink-0">
-                         <div className="w-full h-full bg-blue-500 rounded-sm opacity-80"></div>
+                      <div className="w-12 h-12 bg-white border border-slate-200 rounded flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden">
+                        <img 
+                          src={matchingPreviewDesign.logoUrl} 
+                          alt="Miniatura Logo" 
+                          className="max-w-full max-h-full object-contain"
+                        />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-slate-800">Arte Original.png</p>
-                        <p className="text-[10px] text-slate-500">2.4 MB • Alta Resolución</p>
+                        <p className="text-xs font-bold text-slate-800">Archivo de Diseño ({translatePlacement(matchingPreviewDesign.placement)})</p>
+                        <p className="text-[10px] text-slate-500">Logotipo utilizado por el cliente</p>
                       </div>
                     </div>
-                    <Button variant="outline" size="sm" className="h-8 text-xs flex items-center gap-1 shrink-0">
-                      <Download className="h-3 w-3" /> Descargar Arte
-                    </Button>
+                    <a 
+                      href={matchingPreviewDesign.logoUrl} 
+                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Descargar Arte
+                    </a>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
