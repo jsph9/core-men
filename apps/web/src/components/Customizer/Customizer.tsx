@@ -510,6 +510,16 @@ export default function Customizer({
 
           logo.on('dragend transformend', () => {
             isLogoInteractingRef.current = false;
+
+            // Normalizar: incorporar la escala del Transformer en width/height y resetear scaleX/scaleY a 1
+            // Esto evita que la escala se acumule en futuros drags o transforms
+            const finalWidth = logo.width() * logo.scaleX();
+            const finalHeight = logo.height() * logo.scaleY();
+            logo.width(finalWidth);
+            logo.height(finalHeight);
+            logo.scaleX(1);
+            logo.scaleY(1);
+
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
               logo.image(logoCanvasRef.current);
@@ -591,6 +601,10 @@ export default function Customizer({
     if (width !== undefined) logo.width(width * scaleXRatio);
     if (height !== undefined) logo.height(height * scaleYRatio);
     if (rotation !== undefined) logo.rotation(rotation);
+
+    // Siempre resetear la escala a 1 para evitar acumulación con el Transformer
+    logo.scaleX(1);
+    logo.scaleY(1);
 
     // Forzar actualización del transformador visual si está seleccionado
     const tr = transformerRef.current;

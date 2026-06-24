@@ -260,20 +260,41 @@ export class QuotesService {
 
     let totalQuantity = quote.totalQuantity;
 
-    // Actualizamos items y diseños dentro de una transacción
+    // Actualización incremental dentro de una transacción
     await this.prisma.$transaction(async (tx) => {
+      // --- Items: upsert por productVariantId ---
       if (data.items) {
-        // Borrar items existentes
-        await tx.quoteItem.deleteMany({ where: { quoteId: id } });
+        const existingItems = await tx.quoteItem.findMany({ where: { quoteId: id } });
+        const existingMap = new Map(existingItems.map(i => [i.productVariantId, i]));
+        const incomingVariantIds = new Set(data.items.map(i => i.productVariantId));
 
-        // Crear nuevos items
-        if (data.items.length > 0) {
-          await tx.quoteItem.createMany({
-            data: data.items.map((item) => ({
-              quoteId: id,
-              productVariantId: item.productVariantId,
-              quantity: item.quantity,
-            })),
+        for (const item of data.items) {
+          const existing = existingMap.get(item.productVariantId);
+          if (existing) {
+            // Ya existe → actualizar cantidad solo si cambió
+            if (existing.quantity !== item.quantity) {
+              await tx.quoteItem.update({
+                where: { id: existing.id },
+                data: { quantity: item.quantity },
+              });
+            }
+          } else {
+            // Nuevo → crear
+            await tx.quoteItem.create({
+              data: {
+                quoteId: id,
+                productVariantId: item.productVariantId,
+                quantity: item.quantity,
+              },
+            });
+          }
+        }
+
+        // Eliminar los que ya no están en la lista enviada
+        const toDelete = existingItems.filter(i => !incomingVariantIds.has(i.productVariantId));
+        if (toDelete.length > 0) {
+          await tx.quoteItem.deleteMany({
+            where: { id: { in: toDelete.map(i => i.id) } },
           });
         }
 
@@ -281,27 +302,57 @@ export class QuotesService {
         totalQuantity = data.items.reduce((acc, item) => acc + item.quantity, 0);
       }
 
+      // --- Designs: upsert por placement ---
       if (data.designs) {
-        // Borrar diseños existentes
-        await tx.design.deleteMany({ where: { quoteId: id } });
+        const existingDesigns = await tx.design.findMany({ where: { quoteId: id } });
+        const existingDesignMap = new Map(existingDesigns.map(d => [d.placement, d]));
+        const incomingPlacements = new Set(data.designs.map(d => d.placement));
 
-        // Crear nuevos diseños
-        if (data.designs.length > 0) {
-          await tx.design.createMany({
-            data: data.designs.map((d) => ({
-              quoteId: id,
-              placement: d.placement,
-              techniqueId: d.techniqueId,
-              baseGarmentUrl: d.baseGarmentUrl,
-              logoUrl: d.logoUrl,
-              positionX: d.positionX,
-              positionY: d.positionY,
-              width: d.width,
-              height: d.height,
-              rotation: d.rotation,
-              canvasWidth: d.canvasWidth,
-              canvasHeight: d.canvasHeight,
-            })),
+        for (const d of data.designs) {
+          const existing = existingDesignMap.get(d.placement);
+          if (existing) {
+            // Ya existe → actualizar propiedades
+            await tx.design.update({
+              where: { id: existing.id },
+              data: {
+                techniqueId: d.techniqueId,
+                baseGarmentUrl: d.baseGarmentUrl,
+                logoUrl: d.logoUrl,
+                positionX: d.positionX,
+                positionY: d.positionY,
+                width: d.width,
+                height: d.height,
+                rotation: d.rotation,
+                canvasWidth: d.canvasWidth,
+                canvasHeight: d.canvasHeight,
+              },
+            });
+          } else {
+            // Nuevo placement → crear
+            await tx.design.create({
+              data: {
+                quoteId: id,
+                placement: d.placement,
+                techniqueId: d.techniqueId,
+                baseGarmentUrl: d.baseGarmentUrl,
+                logoUrl: d.logoUrl,
+                positionX: d.positionX,
+                positionY: d.positionY,
+                width: d.width,
+                height: d.height,
+                rotation: d.rotation,
+                canvasWidth: d.canvasWidth,
+                canvasHeight: d.canvasHeight,
+              },
+            });
+          }
+        }
+
+        // Eliminar placements que ya no están
+        const toDeleteDesigns = existingDesigns.filter(d => !incomingPlacements.has(d.placement));
+        if (toDeleteDesigns.length > 0) {
+          await tx.design.deleteMany({
+            where: { id: { in: toDeleteDesigns.map(d => d.id) } },
           });
         }
       }
@@ -311,7 +362,7 @@ export class QuotesService {
       where: { id },
       data: {
         status: QuoteMacroStatus.IN_REVIEW,
-        customerResponseStatus: CustomerResponseStatus.CONFIRMED,
+        customerResponseStatus: CustomerResponseStatus.UPDATED,
         customerPrice: data.quotedPrice,
         finalPrice: data.finalPrice || null,
         estimatedProductionTime: data.estimatedProductionTime || null,
@@ -324,14 +375,14 @@ export class QuotesService {
               oldValue: quote.status,
               newValue: 'IN_REVIEW',
               changedBy: merchantId,
-              note: 'Comerciante respondió y actualizó cotización con precio',
+              note: 'Comerciante actualizó cotización con nueva propuesta comercial',
             },
             {
               changedField: 'CUSTOMER_RESPONSE',
               oldValue: quote.customerResponseStatus,
-              newValue: 'CONFIRMED',
+              newValue: 'UPDATED',
               changedBy: merchantId,
-              note: 'Propuesta comercial confirmada por el comerciante',
+              note: 'Propuesta comercial actualizada por el comerciante',
             }
           ],
         },

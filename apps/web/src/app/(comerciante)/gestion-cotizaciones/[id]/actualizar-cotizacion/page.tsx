@@ -515,7 +515,18 @@ export default function ActualizarCotizacion() {
     const file = e.target.files?.[0];
     if (file) {
       const localUrl = URL.createObjectURL(file);
-      handleDesignChange(activeDesignIdx, "logoUrl", localUrl);
+      // Resetear dimensiones a 0 para que el Customizer auto-calcule
+      // el tamaño respetando el aspect ratio de la nueva imagen
+      setDesigns(prev => {
+        const copy = [...prev];
+        copy[activeDesignIdx] = {
+          ...copy[activeDesignIdx],
+          logoUrl: localUrl,
+          width: 0,
+          height: 0,
+        };
+        return copy;
+      });
       toast.success("Logo cargado temporalmente para visualización.");
     }
   };
@@ -529,8 +540,8 @@ export default function ActualizarCotizacion() {
         id: `new-${placement.toLowerCase()}-${Date.now()}`,
         placement: placement,
         techniqueName: "DTF",
-        width: 100,
-        height: 100,
+        width: 0,
+        height: 0,
         rotation: 0,
         baseGarmentUrl: "",
         logoUrl: "",
