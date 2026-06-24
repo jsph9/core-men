@@ -19,7 +19,14 @@ enum Role {
 
 enum ClientType {
   NATURAL
-  LEGAL
+  JURIDICAL
+}
+
+enum DocumentType {
+  DNI          // Documento Nacional de Identidad (Perú)
+  CE           // Carné de Extranjería
+  PASSPORT     // Pasaporte
+  RUC          // Registro Único de Contribuyentes (persona jurídica)
 }
 
 model User {
@@ -33,11 +40,11 @@ model User {
   email               String    @unique
   passwordHash        String
   role                Role      @default(CLIENT)
-  clientType          ClientType @default(NATURAL)
+  clientType          ClientType @default(NATURAL) //Antiguo: userType
   isActive            Boolean   @default(true)
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
-  whatsappNumber      String?
+  whatsappNumber      String?                     //Es phone
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   termsAccepted       Boolean   @default(true)
@@ -46,7 +53,11 @@ model User {
   ruc                 String? 
   dni                 String?
 
-
+  //Agregados
+  address             String?
+  documentType        DocumentType? @default(DNI)
+  documentNumber      String?
+  birthDate           DateTime?
 
   orders         Order[]
   quotes         Quote[]
