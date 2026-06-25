@@ -23,6 +23,8 @@ export interface Prenda {
   fiberComposition?: string;
   careInstructions?: string;
   categoriaId?: string;
+  fabric?: string;
+  images?: string[];
 }
 
 export interface CategoriaAtributo {

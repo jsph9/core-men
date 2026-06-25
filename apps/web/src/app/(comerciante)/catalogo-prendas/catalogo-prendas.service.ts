@@ -35,6 +35,11 @@ interface ApiCategory {
   name: string;
 }
 
+interface ApiFabric {
+  id: string;
+  value: string;
+}
+
 interface ApiProduct {
   id: string;
   name: string;
@@ -44,6 +49,9 @@ interface ApiProduct {
   createdAt: string;
   updatedAt: string;
   category: ApiCategory;
+  fabric?: ApiFabric;
+  fiberComposition?: string;
+  careInstructions?: string;
   images: ApiProductImage[];
   variants?: ApiVariant[];
 }
@@ -92,6 +100,10 @@ function mapPrenda(p: ApiProduct): Prenda {
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     variantes: (p.variants ?? []).filter((v) => v.isActive).map(mapVariante),
+    fiberComposition: p.fiberComposition ?? "",
+    careInstructions: p.careInstructions ?? "",
+    fabric: p.fabric?.value ?? "",
+    images: p.images?.map((img) => img.url) ?? [],
   };
 }
 
