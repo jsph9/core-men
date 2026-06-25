@@ -144,29 +144,44 @@ export default function PrendaDetailPage() {
                 )}
               </div>
 
-              {/* Miniaturas de Galería */}
+              {/* Miniaturas de Galería con etiquetas de vista */}
               {allImages.length > 1 && (
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-3">
                   {allImages.map((imgUrl, index) => {
                     const isActive = imgUrl === activeImageUrl;
+                    const viewLabels = ["Frontal", "Posterior", "Derecha", "Izquierda"];
+                    const label = viewLabels[index] ?? `Vista ${index + 1}`;
                     return (
                       <button
                         key={index}
                         onClick={() => setActiveImageUrl(imgUrl)}
-                        className={`w-16 h-16 rounded-xl overflow-hidden bg-white border-2 transition-all relative shrink-0 ${
-                          isActive
-                            ? "border-blue-600 shadow-sm ring-2 ring-blue-100"
-                            : "border-slate-200 hover:border-slate-450"
-                        }`}
+                        className="flex flex-col items-center gap-1 group"
                       >
-                        <Image
-                          src={imgUrl}
-                          alt={`Vista ${index + 1}`}
-                          fill
-                          sizes="64px"
-                          className="object-contain p-1"
-                          unoptimized
-                        />
+                        <div
+                          className={`w-16 h-16 rounded-xl overflow-hidden bg-white border-2 transition-all relative shrink-0 ${
+                            isActive
+                              ? "border-blue-600 shadow-sm ring-2 ring-blue-100"
+                              : "border-slate-200 group-hover:border-slate-400"
+                          }`}
+                        >
+                          <Image
+                            src={imgUrl}
+                            alt={label}
+                            fill
+                            sizes="64px"
+                            className="object-contain p-1"
+                            unoptimized
+                          />
+                        </div>
+                        <span
+                          className={`text-[10px] font-semibold transition-colors ${
+                            isActive
+                              ? "text-blue-600"
+                              : "text-slate-400 group-hover:text-slate-600"
+                          }`}
+                        >
+                          {label}
+                        </span>
                       </button>
                     );
                   })}
