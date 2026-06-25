@@ -1,11 +1,12 @@
 import { Controller, Patch, Get, Body, Req, UseGuards, Param, Query } from '@nestjs/common';
 import { MerchantService } from './merchant.service';
 import { QuotesService } from '../quotes/quotes.service';
-import { UpdateMerchantProfileDto } from './dto/merchant.dto';
+import { UpdateMerchantProfileDto, UpdateOrderStatusDto } from './dto/merchant.dto';
 import { RespondQuoteDto, MarkUnfeasibleDto, RejectQuoteDto } from '../quotes/dto/quotes.dto';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role, QuoteMacroStatus } from '@prisma/client';
+
 
 @Controller('merchant')
 @UseGuards(RolesGuard)
@@ -63,4 +64,19 @@ export class MerchantController {
   async rejectQuote(@Req() req: any, @Param('id') id: string, @Body() data: RejectQuoteDto) {
     return this.quotesService.rejectQuote(req.user.userId, id, data.rejectionReason);
   }
+
+
+  // ... (tus otras rutas)
+
+  // NUEVA RUTA: Recibe la petición del frontend para cambiar el estado
+  @Patch('quotes/:id/status')
+  @Roles(Role.MERCHANT)
+  async updateOrderStatus(
+    @Req() req: any, 
+    @Param('id') id: string, 
+    @Body() data: UpdateOrderStatusDto // Usamos el DTO que creamos en el paso 1
+  ) {
+    return this.merchantService.updateOrderStatus(req.user.userId, id, data.status);
+  }
+
 }

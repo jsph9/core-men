@@ -37,6 +37,7 @@ export default function PedidosComerciante() {
   });
 
   // Regla de Negocio: Pedidos activos o cancelados formalizados
+  // Regla de Negocio: Pedidos activos o cancelados
   const ordersList = useMemo(() => {
     const statusOrder: Record<string, number> = {
       WAITING_PAYMENT: 1,
@@ -48,9 +49,9 @@ export default function PedidosComerciante() {
 
     return quotes
       .filter((q: any) => {
-        const isValidStatus = ["WAITING_PAYMENT", "IN_PRODUCTION", "READY_FOR_PICKUP", "DELIVERED"].includes(q.status);
-        const isValidCancelled = q.status === "CANCELLED" && q.clientFormalizationStatus === "CONFIRMED";
-        return isValidStatus || isValidCancelled;
+        // AHORA: Simplemente validamos que el estado esté en esta lista, incluyendo CANCELLED
+        const isValidStatus = ["WAITING_PAYMENT", "IN_PRODUCTION", "READY_FOR_PICKUP", "DELIVERED", "CANCELLED"].includes(q.status);
+        return isValidStatus;
       })
       .sort((a: any, b: any) => {
         const orderA = statusOrder[a.status] || 99;
@@ -63,7 +64,7 @@ export default function PedidosComerciante() {
         return timeB - timeA;
       });
   }, [quotes]);
-
+  
   // 4. Extracción dinámica de Tipos de Prenda
   const uniqueGarmentTypes = useMemo(() => {
     if (!ordersList || ordersList.length === 0) return [];

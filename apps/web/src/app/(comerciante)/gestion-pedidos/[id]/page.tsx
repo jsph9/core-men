@@ -1,4 +1,7 @@
 "use client";
+import { pdf } from '@react-pdf/renderer';
+import { FichaTecnicaPDF } from '@/components/FichaTecnicaPDF'; // Asegúrate de que esta ruta coincida con donde guardaste el archivo
+
 import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 
@@ -33,6 +36,9 @@ import {
   Scale,
   ClipboardCheck
 } from "lucide-react";
+
+
+
 
 const translateViabilityStatus = (status?: string) => {
   if (!status) return "Pendiente";
@@ -422,7 +428,7 @@ export default function DetalleCotizacion() {
 
   
   const advanceOrder = useMutation({
-    mutationFn: (status: string) => apiPatch(`/api/orders/merchant/${id}/status`, { status }),
+    mutationFn: (status: string) => apiPatch(`/api/merchant/quotes/${id}/status`, { status }),
     onSuccess: () => {
       toast.success("Estado del pedido actualizado");
       setActiveModal(null);
@@ -432,13 +438,21 @@ export default function DetalleCotizacion() {
   });
 
   const cancelOrder = useMutation({
-    mutationFn: (data: { rejectionReason: string }) => apiPatch(`/api/merchant/quotes/${id}/reject`, data),
-    onSuccess: () => {
-      toast.success("Pedido cancelado");
-      setActiveModal(null);
-      queryClient.invalidateQueries({ queryKey: ["quote-detail", id] });
+    mutationFn: async (data: { rejectionReason: string }) => {
+      // PASO 1: Guardamos la razón de cancelación usando la ruta original de tu amigo
+      await apiPatch(`/api/merchant/quotes/${id}/reject`, data);
+      
+      // PASO 2: Forzamos el estado principal a CANCELADO usando la ruta que nosotros creamos
+      return apiPatch(`/api/merchant/quotes/${id}/status`, { status: "CANCELLED" });
     },
-    onError: (err: any) => toast.error("Error", { description: err.message })
+    onSuccess: () => {
+      toast.success("Pedido cancelado exitosamente");
+      setActiveModal(null);
+      // Obligamos a que la pantalla y la bandeja se actualicen al instante
+      queryClient.invalidateQueries({ queryKey: ["quote-detail", id] });
+      queryClient.invalidateQueries({ queryKey: ["merchant-quotes"] });
+    },
+    onError: (err: any) => toast.error("Error al cancelar", { description: err.message })
   });
 
   const respondQuote = useMutation({
@@ -803,10 +817,14 @@ export default function DetalleCotizacion() {
             <div className="flex items-start w-full max-w-4xl mx-auto py-2">
               {ORDER_STEPS.map((step, idx) => {
                 const isCancelled = quote?.status === "CANCELLED" || quote?.payments?.some((p:any) => p.status === "FAILED");
+                let currentIndex = ORDER_STEPS.findIndex(s => s.id === quote?.status);
+                
                 let state = "pending";
-                const currentIndex = ORDER_STEPS.findIndex(s => s.id === quote?.status);
-                if (isCancelled) state = "cancelled";
-                else if (currentIndex !== -1) {
+                
+                // LÓGICA CORREGIDA: Si está cancelado, todo se pinta de rojo.
+                if (isCancelled) {
+                  state = "cancelled";
+                } else if (currentIndex !== -1) {
                   if (idx < currentIndex) state = "completed";
                   else if (idx === currentIndex) state = "current";
                 }
@@ -814,7 +832,7 @@ export default function DetalleCotizacion() {
                 const getLineClass = (s: string) => {
                   if (s === "completed") return "bg-emerald-500";
                   if (s === "current") return "bg-blue-500";
-                  if (s === "cancelled") return "bg-red-500";
+                  if (s === "cancelled") return "bg-red-400 opacity-60"; // Línea roja tenue
                   return "bg-slate-200";
                 };
 
@@ -856,9 +874,12 @@ export default function DetalleCotizacion() {
                 );
               })}
             </div>
+            
+            {/* Etiqueta inferior de Pedido Cancelado */}
             {(quote?.status === "CANCELLED" || quote?.payments?.some((p:any) => p.status === "FAILED")) && (
-              <div className="text-center mt-4">
-                <span className="text-red-600 font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+              <div className="text-center mt-6">
+                <span className="text-red-600 font-bold bg-red-50 px-5 py-2.5 rounded-lg border border-red-200 shadow-sm flex items-center justify-center gap-2 max-w-xs mx-auto">
+                  <XCircle className="w-5 h-5" />
                   Pedido Cancelado
                 </span>
               </div>
@@ -1259,9 +1280,9 @@ export default function DetalleCotizacion() {
                 )}
                 
                 {quote.rejectionReason && (
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center gap-1.5">
-                      <XCircle className="w-4 h-4 text-slate-500" /> Razón de Rechazo
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-red-600 mb-1.5 flex items-center gap-1.5">
+                      <XCircle className="w-4 h-4 text-red-500" /> Razón de Rechazo
                     </h4>
                     <p className="text-sm text-slate-700 font-medium whitespace-pre-wrap">{quote.rejectionReason}</p>
                   </div>
@@ -1288,6 +1309,53 @@ export default function DetalleCotizacion() {
           <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
             <p className="text-sm text-slate-500 hidden md:block">Acciones del pedido</p>
             <div className="flex gap-3 w-full sm:w-auto">
+              
+              {/* --- BOTÓN DE FICHA TÉCNICA --- */}
+              {["IN_PRODUCTION", "READY_FOR_PICKUP", "COMPLETED"].includes(quote?.status) && (
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800"
+                  onClick={async () => {
+                    const loadingToast = toast.loading("Generando ficha técnica...");
+                    try {
+                      // 1. Generamos el archivo PDF en memoria enviándole la data del pedido
+                      // Generamos el archivo PDF pasándole absolutamente toda la matriz y producto base de la pantalla
+                      const blob = await pdf(
+                        <FichaTecnicaPDF 
+                          quote={quote} 
+                          baseProduct={baseProduct} 
+                          uniqueColors={uniqueColors} 
+                          uniqueSizes={uniqueSizes} 
+                          getQuantity={getQuantity}
+                          getColorTotal={getColorTotal}
+                          allImages={dbProductImages} 
+                        />
+                      ).toBlob();
+                      
+                      // 2. Creamos una URL temporal y forzamos la descarga
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `Ficha_Tecnica_${quote?.code || 'Pedido'}.pdf`;
+                      link.click();
+                      
+                      // 3. Limpiamos la memoria y avisamos que hubo éxito
+                      URL.revokeObjectURL(url);
+                      toast.dismiss(loadingToast);
+                      toast.success("Ficha técnica descargada correctamente");
+                    } catch (error) {
+                      console.error("Error al generar PDF:", error);
+                      toast.dismiss(loadingToast);
+                      toast.error("Ocurrió un error al generar el PDF");
+                    }
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Ficha Técnica
+                </Button>
+              )}
+              {/* ------------------------------------ */}
+
               <Button
                 variant="outline"
                 className="w-full sm:w-auto border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
