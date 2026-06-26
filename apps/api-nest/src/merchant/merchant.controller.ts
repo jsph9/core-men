@@ -65,6 +65,12 @@ export class MerchantController {
     return this.quotesService.rejectQuote(req.user.userId, id, data.rejectionReason);
   }
 
+  @Patch('quotes/:id/accept')
+  @Roles(Role.MERCHANT)
+  async acceptQuote(@Req() req: any, @Param('id') id: string, @Body() data: RespondQuoteDto) {
+    return this.quotesService.acceptQuote(req.user.userId, id, data);
+  }
+
 
   // ... (tus otras rutas)
 

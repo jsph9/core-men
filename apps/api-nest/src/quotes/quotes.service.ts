@@ -502,6 +502,35 @@ export class QuotesService {
     return this.getMerchantQuoteById(id);
   }
 
+  async acceptQuote(merchantId: string, id: string, data: RespondQuoteDto) {
+    const quote = await this.prisma.quote.findUnique({ where: { id } });
+    if (!quote) {
+      throw new NotFoundException('Cotización no encontrada');
+    }
+
+    await this.prisma.quote.update({
+      where: { id },
+      data: {
+        customerResponseStatus: CustomerResponseStatus.CONFIRMED,
+        customerPrice: data.quotedPrice,
+        finalPrice: data.finalPrice || null,
+        estimatedProductionTime: data.estimatedProductionTime || null,
+        merchantMessage: data.merchantMessage,
+        statusHistory: {
+          create: {
+            changedField: 'CUSTOMER_RESPONSE',
+            oldValue: quote.customerResponseStatus,
+            newValue: CustomerResponseStatus.CONFIRMED,
+            changedBy: merchantId,
+            note: 'Cotización confirmada directamente por el comerciante.',
+          },
+        },
+      },
+    });
+
+    return this.getMerchantQuoteById(id);
+  }
+
   async rejectQuote(merchantId: string, id: string, rejectionReason: string) {
     const quote = await this.prisma.quote.findUnique({ where: { id } });
     if (!quote) {
@@ -512,6 +541,7 @@ export class QuotesService {
       where: { id },
       data: {
         customerResponseStatus: CustomerResponseStatus.REJECTED,
+        status: QuoteMacroStatus.CANCELLED,
         rejectionReason: rejectionReason,
         statusHistory: {
           create: {

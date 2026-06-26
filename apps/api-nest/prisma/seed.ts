@@ -310,7 +310,7 @@ async function main() {
         { productVariantId: await getVariant('Polo Básico Cuello Redondo 20/1', 'Blanco', 'M'), quantity: 5 },
         { productVariantId: await getVariant('Polo Básico Cuello Redondo 20/1', 'Negro', 'L'), quantity: 5 }
       ]},
-      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_f.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/pucplogo.png', positionX: 45, positionY: 30, width: 10, height: 10, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.BACK, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_b.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/hardae-sailing-8487722.png', positionX: 50, positionY: 50, width: 28, height: 28, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
+      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_f.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/pucplogo.png', positionX: 145, positionY: 40, width: 100, height: 140, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.BACK, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_b.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/hardae-sailing-8487722.png', positionX: 50, positionY: 50, width: 28, height: 28, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       payments: { create: [{ totalFinalAmount: 250.00, amountToPay: 250.00, status: PaymentQuoteStatus.FULL_PAYMENT, amountPaid: 250.00, paymentMethod: PaymentMethod.YAPE }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'PENDING', changedBy: client1.id }, { changedField: 'VIABILITY', oldValue: 'PENDING', newValue: 'VIABLE', changedBy: admin.id, note: 'DTF permite desde 1 unidad' }, { changedField: 'STATUS', oldValue: 'PENDING', newValue: 'IN_REVIEW', changedBy: admin.id }, { changedField: 'FORMALIZATION', oldValue: 'PENDING', newValue: 'UPDATED', changedBy: admin.id }, { changedField: 'FORMALIZATION', oldValue: 'UPDATED', newValue: 'CONFIRMED', changedBy: client1.id }, { changedField: 'STATUS', oldValue: 'IN_REVIEW', newValue: 'WAITING_PAYMENT', changedBy: 'Sistema' }, { changedField: 'STATUS', oldValue: 'WAITING_PAYMENT', newValue: 'IN_PRODUCTION', changedBy: 'Sistema' }]}
     }
@@ -321,7 +321,7 @@ async function main() {
     data: {
       clientId: client1.id, totalQuantity: 2, message: 'Quiero 2 poleras bordadas con mi nombre.', isVisited: true, viabilityStatus: ViabilityStatus.NONVIABLE, clientFormalizationStatus: ClientFormalizationStatus.REJECTED, customerResponseStatus: CustomerResponseStatus.PENDING, status: QuoteMacroStatus.CANCELLED, unfeasibleReason: 'El bordado requiere un mínimo de 12 unidades por el costo de matriz.', estimatedPrice: 150.00,
       items: { create: [{ productVariantId: await getVariant('Polera con Cuello V', 'Negro', 'L'), quantity: 2 }] },
-      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_f.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/biancavandijk-beauty-7048849.png', positionX: 30, positionY: 30, width: 8, height: 4, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
+      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_f.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/biancavandijk-beauty-7048849.png', positionX: 130, positionY: 40, width: 30, height: 45, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'PENDING', changedBy: client1.id }, { changedField: 'VIABILITY', oldValue: 'PENDING', newValue: 'NONVIABLE', changedBy: merchant.id }, { changedField: 'FORMALIZATION', oldValue: 'PENDING', newValue: 'REJECTED', changedBy: 'Sistema' }, { changedField: 'STATUS', oldValue: 'PENDING', newValue: 'CANCELLED', changedBy: 'Sistema' }]}
     }
   });
@@ -331,7 +331,7 @@ async function main() {
     data: {
       clientId: client2.id, totalQuantity: 100, message: 'Polos piqué institucionales para los supervisores.', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, clientFormalizationStatus: ClientFormalizationStatus.CONFIRMED, customerResponseStatus: CustomerResponseStatus.CONFIRMED, status: QuoteMacroStatus.DELIVERED, estimatedPrice: 4300.00, customerPrice: 4300.00, finalPrice: 4300.00, estimatedProductionTime: 10,
       items: { create: [{ productVariantId: await getVariant('Polo Camisero Clásico', 'Negro', 'M'), quantity: 50 }, { productVariantId: await getVariant('Polo Camisero Clásico', 'Negro', 'L'), quantity: 50 }] },
-      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998161-631224673.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/Google-Cloud-Platform-GCP-Logo.png', positionX: 45, positionY: 35, width: 8, height: 8, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.LEFTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998164-848136159.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/Amazon_Web_Services_Logo.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.RIGHTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998163-362873642.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/clker-free-vector-images-bird-295026_1920.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},      payments: { create: [{ totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FAILED, amountPaid: 0, paymentMethod: PaymentMethod.CARD }, { totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FULL_PAYMENT, amountPaid: 4300.00, paymentMethod: PaymentMethod.TRANSFER }]},
+      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998161-631224673.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/Google-Cloud-Platform-GCP-Logo.png', positionX: 145, positionY: 35, width: 140, height: 180, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.LEFTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998164-848136159.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/Amazon_Web_Services_Logo.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.RIGHTSLEEVE, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998163-362873642.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/clker-free-vector-images-bird-295026_1920.png', positionX: 50, positionY: 50, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},      payments: { create: [{ totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FAILED, amountPaid: 0, paymentMethod: PaymentMethod.CARD }, { totalFinalAmount: 4300.00, amountToPay: 4300.00, status: PaymentQuoteStatus.FULL_PAYMENT, amountPaid: 4300.00, paymentMethod: PaymentMethod.TRANSFER }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'DELIVERED', changedBy: merchant.id }]}
     }
   });
@@ -342,7 +342,7 @@ async function main() {
       id: "c28fd975-b6b1-4e0c-8c90-ed7581a806a6", // ID fijo con prefijo C28FD9
       clientId: client2.id, totalQuantity: 200, message: 'Necesitamos poleras para campaña de invierno. ¿Si llevamos 200 nos mejoran el precio del DTF?', isVisited: true, viabilityStatus: ViabilityStatus.VIABLE, customerResponseStatus: CustomerResponseStatus.PENDING, status: QuoteMacroStatus.IN_REVIEW, estimatedPrice: 11000.00,
       items: { create: [{ productVariantId: await getVariant('Polera con Cuello V', 'Negro', 'L'), quantity: 100 }, { productVariantId: await getVariant('Polera con Cuello V', 'Gris Jaspeado', 'XL'), quantity: 100 }] },
-      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_f.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/biancavandijk-botanical-7086609.png', positionX: 40, positionY: 40, width: 5, height: 5, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.BACK, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_b.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/biancavandijk-plant-7842919.png', positionX: 50, positionY: 50, width: 30, height: 30, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
+      designs: { create: [{ placement: DesignPlacement.FRONT, techniqueId: getId(dbTechs, 'name', 'Bordado')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_f.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/biancavandijk-botanical-7086609.png', positionX: 140, positionY: 40, width: 55, height: 85, rotation: 0, canvasWidth: 500, canvasHeight: 500 }, { placement: DesignPlacement.BACK, techniqueId: getId(dbTechs, 'name', 'DTF')!, baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloV_b.png', logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/biancavandijk-plant-7842919.png', positionX: 50, positionY: 50, width: 30, height: 30, rotation: 0, canvasWidth: 500, canvasHeight: 500 }]},
       statusHistory: { create: [{ changedField: 'STATUS', newValue: 'PENDING', changedBy: client2.id }, { changedField: 'VIABILITY', oldValue: 'PENDING', newValue: 'VIABLE', changedBy: admin.id }]}
     }
   });
@@ -372,10 +372,10 @@ async function main() {
             techniqueId: getId(dbTechs, 'name', 'DTF')!,
             baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_f.png',
             logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/piqsels.com-id-zbxjy.png',
-            positionX: 45,
-            positionY: 25,
-            width: 12,
-            height: 12,
+            positionX: 145,
+            positionY: 60,
+            width: 112,
+            height: 124,
             rotation: 0,
             canvasWidth: 500,
             canvasHeight: 500
@@ -385,10 +385,10 @@ async function main() {
             techniqueId: getId(dbTechs, 'name', 'DTF')!,
             baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_b.png',
             logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/honykunst-portrait-2899779_1920.png',
-            positionX: 50,
-            positionY: 45,
-            width: 25,
-            height: 15,
+            positionX: 150,
+            positionY: 145,
+            width: 225,
+            height: 135,
             rotation: 0,
             canvasWidth: 500,
             canvasHeight: 500
@@ -433,10 +433,10 @@ async function main() {
             techniqueId: getId(dbTechs, 'name', 'DTF')!, 
             baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_f.png', 
             logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/piqsels.com-id-zbxjy.png', 
-            positionX: 45, 
-            positionY: 25, 
-            width: 10, 
-            height: 10, 
+            positionX: 141, 
+            positionY: 45, 
+            width: 200, 
+            height: 300, 
             rotation: 0, 
             canvasWidth: 500, 
             canvasHeight: 500 
@@ -446,10 +446,10 @@ async function main() {
             techniqueId: getId(dbTechs, 'name', 'Serigrafía')!, 
             baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoloBasicoCuelloRedondo_b.png', 
             logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/funkyfocus-man-4603859.jpg', 
-            positionX: 50, 
-            positionY: 40, 
-            width: 35, 
-            height: 35, 
+            positionX: 150, 
+            positionY: 12, 
+            width: 350, 
+            height: 300, 
             rotation: 0, 
             canvasWidth: 500, 
             canvasHeight: 500 
@@ -573,10 +573,10 @@ async function main() {
             techniqueId: getId(dbTechs, 'name', 'Bordado')!, 
             baseGarmentUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/1782015998161-631224673.png', 
             logoUrl: 'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/disenio-cliente/pucplogo.png', 
-            positionX: 45, 
-            positionY: 30, 
-            width: 10, 
-            height: 10, 
+            positionX: 150, 
+            positionY: 40, 
+            width: 150, 
+            height: 180, 
             rotation: 0, 
             canvasWidth: 500, 
             canvasHeight: 500 

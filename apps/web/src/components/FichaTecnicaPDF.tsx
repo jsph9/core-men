@@ -191,7 +191,7 @@ export const FichaTecnicaPDF = ({
 
                   {/* Columna 3 */}
                   <View style={[styles.tableCol, styles.col3]}>
-                    <Text style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                    <Text style={{ lineHeight: 1.4 }}>
                       {sizesBreakdown || '00 unds.'}
                     </Text>
                   </View>

@@ -468,6 +468,19 @@ export default function DetalleCotizacion() {
     }
   });
 
+  const acceptQuote = useMutation({
+    mutationFn: (data: { quotedPrice: number; finalPrice?: number; estimatedProductionTime?: number; merchantMessage?: string }) => 
+      apiPatch(`/api/merchant/quotes/${id}/accept`, data),
+    onSuccess: () => {
+      toast.success("Cotización aceptada correctamente");
+      setActiveModal(null);
+      router.push("/gestion-cotizaciones");
+    },
+    onError: (err: any) => {
+      toast.error("Error al aceptar cotización", { description: err.message });
+    }
+  });
+
   const markUnfeasible = useMutation({
     mutationFn: (data: { unfeasibleReason: string }) => 
       apiPatch(`/api/merchant/quotes/${id}/unfeasible`, data),
@@ -759,7 +772,7 @@ export default function DetalleCotizacion() {
 
     const fullMessage = (proposalMessage || "").trim() + discountText;
 
-    respondQuote.mutate({
+    acceptQuote.mutate({
       quotedPrice: Number(proposalPrice),
       finalPrice: Number(proposalFinalPrice) || undefined,
       estimatedProductionTime: days,

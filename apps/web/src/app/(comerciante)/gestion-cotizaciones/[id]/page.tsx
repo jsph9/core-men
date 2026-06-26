@@ -116,8 +116,7 @@ const getActiveStepIndex = (quote: any): number => {
   }
   if (
     quote.customerResponseStatus === "PENDING" ||
-    quote.customerResponseStatus === "IN_NEGOTIATION" ||
-    quote.customerResponseStatus === "UPDATED"
+    quote.customerResponseStatus === "IN_NEGOTIATION"
   ) {
     return 2; // Estado de la Cotización is active
   }
@@ -405,16 +404,19 @@ export default function DetalleCotizacion() {
     return designedPlacements.find((d: any) => d.placement === activePreviewPlacement);
   }, [designedPlacements, activePreviewPlacement]);
 
-  const respondQuote = useMutation({
+  const acceptQuote = useMutation({
     mutationFn: (data: { quotedPrice: number; finalPrice?: number; estimatedProductionTime?: number; merchantMessage?: string }) => 
-      apiPatch(`/api/merchant/quotes/${id}/respond`, data),
+      apiPatch(`/api/merchant/quotes/${id}/accept`, data),
     onSuccess: () => {
-      toast.success("Propuesta enviada correctamente");
+      toast.success("Cotización aceptada correctamente");
       setActiveModal(null);
+      
+      queryClient.invalidateQueries({ queryKey: ["quote-detail", id] });
+
       router.push("/gestion-cotizaciones");
     },
     onError: (err: any) => {
-      toast.error("Error al enviar propuesta", { description: err.message });
+      toast.error("Error al aceptar cotización", { description: err.message });
     }
   });
 
@@ -709,7 +711,7 @@ export default function DetalleCotizacion() {
 
     const fullMessage = (proposalMessage || "").trim() + discountText;
 
-    respondQuote.mutate({
+    acceptQuote.mutate({
       quotedPrice: Number(proposalPrice),
       finalPrice: Number(proposalFinalPrice) || undefined,
       estimatedProductionTime: days,
@@ -1547,9 +1549,9 @@ export default function DetalleCotizacion() {
             <Button 
               className="bg-[#10B981] hover:bg-[#059669] text-white" 
               onClick={handleAcceptSubmit}
-              disabled={respondQuote.isPending || !proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice)) || isNaN(Number(proposalEstimatedDays))}
+              disabled={acceptQuote.isPending || !proposalPrice || !proposalEstimatedDays.trim() || !proposalMessage.trim() || isNaN(Number(proposalPrice)) || isNaN(Number(proposalEstimatedDays))}
             >
-              {respondQuote.isPending ? "Enviando..." : "Confirmar y Enviar"}
+              {acceptQuote.isPending ? "Aceptando..." : "Confirmar y Enviar"}
             </Button>
           </DialogFooter>
         </DialogContent>
