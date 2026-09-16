@@ -1,7 +1,6 @@
 # CoreMen — E-Commerce Platform
-`Next.js 16` `React 19` `NestJS` `TypeScript` `PostgreSQL` `Prisma` `Stripe`
 
-Plataforma integral de comercio electrónico para el sector textil (modelo Gamarra). Gestiona el ciclo de vida completo de la venta de prendas: catálogo, personalización visual en tiempo real, checkout y panel administrativo.
+Plataforma integral de comercio electrónico para el sector textil (modelo Gamarra). Gestiona el ciclo de vida completo de la venta de prendas: desde el catálogo y la personalización visual hasta la compra final y el panel administrativo. El diferencial técnico es un motor de personalización en tiempo real que permite al cliente posicionar, escalar y rotar logotipos sobre distintas vistas de la prenda con fidelidad de textura, generando además una ficha técnica lista para producción en taller.
 
 ---
 
