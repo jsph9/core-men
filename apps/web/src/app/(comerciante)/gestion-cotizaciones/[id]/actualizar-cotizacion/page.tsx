@@ -670,40 +670,40 @@ export default function ActualizarCotizacion() {
   };
 
   return (
-    <div className="font-sans w-full min-h-[calc(100vh-4rem)] bg-slate-50/50 pb-20">
-      {/* Cabecera */}
-      <div className="bg-white border-b border-slate-200 px-6 py-5 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Link href={`/gestion-cotizaciones/${id}`} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-md text-slate-600 transition-colors">
+    <div className="font-sans w-full min-h-[calc(100vh-4rem)] pb-24">
+      {/* Cabecera y Barra de Progreso Unificada */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-8">
+        <div className="flex items-center gap-4 mb-6">
+          <Link href={`/gestion-cotizaciones/${id}`} className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 transition-colors">
             <ChevronLeft className="h-5 w-5" />
           </Link>
           <div>
             <p className="text-xs text-slate-500 mb-0.5">Cotización #{(id || "").slice(0, 6).toUpperCase()} {">"} <span className="font-semibold text-slate-900">Actualizar Asistente</span></p>
-            <h1 className="text-xl font-bold text-slate-900">Actualizar Información</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Actualizar Información</h1>
           </div>
         </div>
-      </div>
 
-      {/* Barra de progreso */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm mb-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold text-slate-400 mb-2.5">
-            <span className={step >= 1 ? "text-blue-600" : ""}>1. Prenda y Tela</span>
-            <span className={step >= 2 ? "text-blue-600" : ""}>2. Matriz de Cantidades</span>
-            <span className={step >= 3 ? "text-blue-600" : ""}>3. Especificaciones de Diseño</span>
-            <span className={step >= 4 ? "text-blue-600" : ""}>4. Propuesta Comercial</span>
-          </div>
-          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-            <div 
-              className="bg-blue-600 h-full transition-all duration-300"
-              style={{ width: `${step * 25}%` }}
-            ></div>
+        {/* Barra de progreso */}
+        <div className="border-t border-slate-100 pt-5">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold text-slate-400 mb-2.5">
+              <span className={step >= 1 ? "text-blue-600" : ""}>1. Prenda y Tela</span>
+              <span className={step >= 2 ? "text-blue-600" : ""}>2. Matriz de Cantidades</span>
+              <span className={step >= 3 ? "text-blue-600" : ""}>3. Especificaciones de Diseño</span>
+              <span className={step >= 4 ? "text-blue-600" : ""}>4. Propuesta Comercial</span>
+            </div>
+            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div 
+                className="bg-blue-600 h-full transition-all duration-300"
+                style={{ width: `${step * 25}%` }}
+              ></div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Contenido del paso actual */}
-      <div className="max-w-7xl mx-auto px-6">
+      <div className="w-full">
         
         {step === 1 && (
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
@@ -1581,7 +1581,7 @@ export default function ActualizarCotizacion() {
       </div>
 
       {/* Botonera de Asistente Sticky */}
-      <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-slate-200 py-4 px-6 z-20 shadow-md">
+      <div className="fixed bottom-0 left-0 md:left-[var(--sidebar-width,16rem)] right-0 bg-white border-t border-slate-200 py-4 px-6 z-20 shadow-md transition-all duration-300">
         <div className="max-w-7xl mx-auto flex justify-between gap-4">
           <Button
             variant="outline"

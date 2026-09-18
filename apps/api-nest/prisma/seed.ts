@@ -72,7 +72,7 @@ async function main() {
   for (const name of categories) await prisma.category.upsert({ where: { name }, update: {}, create: { name } });
 
   const colors = [
-    { n: 'Blanco', h: '#FFFFFF' }, { n: 'Negro', h: '#000000' }, { n: 'Gris Jaspeado', h: '#9CA3AF' }, { n: 'Azul Marino', h: '#1E3A8A' },
+    { n: 'Blanco', h: '#FFFFFF' }, { n: 'Negro', h: '#000000' }, { n: 'Gris Jaspeado', h: '#9CA3AF' }, { n: 'Plomo', h: '#808080' }, { n: 'Azul Marino', h: '#1E3A8A' },
     { n: 'Azul Royal', h: '#2563EB' }, { n: 'Celeste', h: '#7DD3FC' }, { n: 'Rojo', h: '#DC2626' }, { n: 'Guinda (Vino)', h: '#7F1D1D' },
     { n: 'Verde Militar', h: '#4D7C0F' }, { n: 'Verde Esmeralda', h: '#10B981' }, { n: 'Amarillo', h: '#FBBF24' }, { n: 'Naranja', h: '#F97316' },
     { n: 'Rosado', h: '#F472B6' }, { n: 'Fucsia', h: '#D946EF' }, { n: 'Morado', h: '#7E22CE' }, { n: 'Turquesa', h: '#06B6D4' },
@@ -142,9 +142,9 @@ async function main() {
         'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/PoleraCuelloRedondo_l.png'
       ] },
 
-    { n: 'Short Deportivo', c: 'Ropa Deportiva', f: 'Taslán', p: 25, comp: '100% Poliéster', g: 'TIPO D',
+    { n: 'Polo Deportivo Cuello Redondo', c: 'Ropa Deportiva', f: 'Taslán', p: 25, comp: '100% Poliéster', g: 'TIPO D',
       t: [{n: 'Vinil Textil', p: 4}, {n: 'Sublimación', p: 5}],
-      v: [{c: 'Blanco', s: ['M','L'], stk: 100}, {c: 'Azul Marino', s: ['M','L'], stk: 50}],
+      v: [{c: 'Plomo', s: ['S','M','L','XL'], stk: 100}],
       imgs: [
         'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/ShortDeportivo_f.png',
         'https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/catalogo-coremen/ShortDeportivo_b.png',
@@ -290,7 +290,7 @@ async function main() {
   await prisma.order.create({
     data: {
       userId: client2.id, status: OrderStatus.IN_PREPARATION, totalAmount: 250.00, receiptType: ReceiptType.FACTURA,
-      items: { create: [{ productVariantId: await getVariant('Short Deportivo', 'Azul Marino', 'L'), quantity: 5, unitPrice: 50.00, subtotal: 250.00 }] },
+      items: { create: [{ productVariantId: await getVariant('Polo Deportivo Cuello Redondo', 'Plomo', 'L'), quantity: 5, unitPrice: 50.00, subtotal: 250.00 }] },
       payment: { create: { stripePaymentId: 'pay_yape_02', amount: 250.00, status: PaymentStatus.CONFIRMED, method: PaymentMethod.YAPE } },
       statusHistory: { create: [{ toStatus: OrderStatus.REGISTERED, changedBy: client2.id }, { toStatus: OrderStatus.IN_PREPARATION, changedBy: merchant.id, reason: 'Confirmación de Yape recibida. Planchando pantalones.' }]}
     }

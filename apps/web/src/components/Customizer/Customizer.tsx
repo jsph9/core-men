@@ -44,6 +44,7 @@ const processShadowMask = (img: HTMLImageElement, url: string): { url: string; l
     const imgData = ctx.getImageData(0, 0, img.width, img.height);
     const data = imgData.data;
 
+    // Calcular luminancia promedio (excluyendo fondo transparente)
     let totalR = 0, totalG = 0, totalB = 0, count = 0;
     for (let i = 0; i < data.length; i += 4) {
       const a = data[i + 3];
@@ -60,8 +61,7 @@ const processShadowMask = (img: HTMLImageElement, url: string): { url: string; l
     const avgB = count > 0 ? totalB / count : 128;
     const Y = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
 
-    const deadzone = 12; // Tolerancia para considerar un área como "plana" (sin pliegues ni brillos)
-
+    // Generar mapa de sombras y brillos de alto contraste
     for (let i = 0; i < data.length; i += 4) {
       const a = data[i + 3];
       if (a > 0) {
@@ -71,23 +71,20 @@ const processShadowMask = (img: HTMLImageElement, url: string): { url: string; l
         const pixelY = 0.299 * r + 0.587 * g + 0.114 * b;
         const diff = pixelY - Y;
 
-        if (Math.abs(diff) <= deadzone) {
-          // Áreas planas: completamente transparentes para no desteñir el logo
-          data[i + 3] = 0;
-        } else if (diff < -deadzone) {
+        if (diff < 0) {
           // Pliegues/Sombras oscuras
-          const intensity = Math.min(255, (Math.abs(diff) - deadzone) * 3.5);
+          const intensity = Math.min(255, Math.abs(diff) * 2.5);
           data[i] = 0;
           data[i + 1] = 0;
           data[i + 2] = 0;
           data[i + 3] = Math.round((a / 255) * intensity);
         } else {
           // Brillos/Iluminación
-          const intensity = Math.min(255, (diff - deadzone) * 4.0);
+          const intensity = Math.min(255, diff * 3.0);
           data[i] = 255;
           data[i + 1] = 255;
           data[i + 2] = 255;
-          data[i + 3] = Math.round((a / 255) * Math.min(intensity, 180)); // Limitar brillo máximo
+          data[i + 3] = Math.round((a / 255) * intensity);
         }
       }
     }
@@ -95,6 +92,7 @@ const processShadowMask = (img: HTMLImageElement, url: string): { url: string; l
     ctx.putImageData(imgData, 0, 0);
     return { url: canvas.toDataURL(), luminance: Y };
   } catch (err) {
+    console.error('Error procesando imagen para sombras:', err);
     return { url: url, luminance: 128 };
   }
 };
@@ -130,25 +128,29 @@ export default function Customizer({
   const layerRef = useRef<Konva.Layer | null>(null);
   const transformerRef = useRef<Konva.Transformer | null>(null);
   const logoRef = useRef<Konva.Image | null>(null);
-  
+  const logoGroupRef = useRef<Konva.Group | null>(null);
   const shadowMaskCacheRef = useRef<{ [key: string]: { url: string; luminance: number } }>({});
-  const embroideryRectRef = useRef<Konva.Rect | null>(null);
-
   const logoImgObjRef = useRef<HTMLImageElement | null>(null);
   const shadowOverlayObjRef = useRef<HTMLImageElement | null>(null);
   const logoCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const garmentRectRef = useRef<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 });
-  const garmentLuminanceRef = useRef<number>(128);
-  const isSimulationActiveRef = useRef<boolean>(isSimulationActive);
+  const cachedMaskRef = useRef<any>(null);
+  const embroideryRectRef = useRef<Konva.Rect | null>(null);
 
   const isDraggingRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
   const currentTranslateRef = useRef({ x: 0, y: 0 });
 
+  const garmentRectRef = useRef<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 });
+  const garmentLuminanceRef = useRef<number>(128);
+  const isSimulationActiveRef = useRef<boolean>(isSimulationActive);
+  const isLogoInteractingRef = useRef<boolean>(false);
+
+  // Sincronizar el ref con la prop
   useEffect(() => {
     isSimulationActiveRef.current = isSimulationActive;
   }, [isSimulationActive]);
 
+  // Inicializar canvas local en navegador
   if (typeof window !== 'undefined' && !logoCanvasRef.current) {
     logoCanvasRef.current = document.createElement('canvas');
   }
@@ -168,12 +170,17 @@ export default function Customizer({
     const logoHeight = logoNode.height();
     const logoScaleX = logoNode.scaleX();
     const logoScaleY = logoNode.scaleY();
+    const logoRotation = logoNode.rotation();
+    const logoX = logoNode.x();
+    const logoY = logoNode.y();
 
+    // Dimensiones en pantalla
     const renderWidth = Math.ceil(logoWidth * Math.abs(logoScaleX));
     const renderHeight = Math.ceil(logoHeight * Math.abs(logoScaleY));
 
     if (renderWidth <= 0 || renderHeight <= 0) return;
 
+    // Multiplicador de calidad para evitar pixelación (4x resolución de pantalla para soporte Retina/Zoom)
     const qualityScale = 4;
     const canvasWidth = renderWidth * qualityScale;
     const canvasHeight = renderHeight * qualityScale;
@@ -188,6 +195,7 @@ export default function Customizer({
 
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+    // Escalar el contexto al multiplicador de calidad para todo el renderizado interno
     ctx.save();
     ctx.scale(qualityScale, qualityScale);
 
@@ -202,34 +210,33 @@ export default function Customizer({
     ctx.drawImage(logoImg, 0, 0, renderWidth, renderHeight);
     ctx.restore();
 
-    // 2. Aplicar el mapa de sombras de la prenda usando hard-light
+    // 2. Aplicar el mapa de sombras de la prenda usando source-atop (solo si no se está interactuando)
     if (isSimulationActiveRef.current && shadowOverlayObjRef.current) {
       ctx.save();
+      ctx.globalCompositeOperation = 'source-atop';
 
-      // hard-light permite aplicar tanto oscurecimiento (sombras negras) como iluminación (brillos blancos)
-      // independientemente del color del logo original, siendo perfecto para logos negros o blancos.
-      ctx.globalCompositeOperation = 'hard-light';
-      ctx.globalAlpha = 0.85;
+      // Blending e intensidad según luminancia
+      const Y = garmentLuminanceRef.current;
+      if (Y > 170) {
+        ctx.globalAlpha = 0.8;
+      } else if (Y > 80) {
+        ctx.globalAlpha = 0.5;
+      } else {
+        ctx.globalAlpha = 0.65;
+      }
 
+      // Obtener matriz inversa del transform del logo para mapear coordenadas globales -> locales
       const transform = new Konva.Transform(logoNode.getTransform().getMatrix().slice());
       transform.invert();
       const inv = transform.getMatrix();
 
+      // Aplicar transformaciones al contexto del canvas local
       ctx.scale(Math.abs(logoScaleX), Math.abs(logoScaleY));
       ctx.transform(inv[0], inv[1], inv[2], inv[3], inv[4], inv[5]);
 
+      // Dibujar la máscara completa en su posición global
       const gRect = garmentRectRef.current;
       ctx.drawImage(shadowOverlayObjRef.current, gRect.x, gRect.y, gRect.width, gRect.height);
-      ctx.restore();
-      
-      // 3. Recortar (eliminar) cualquier sombra que se haya dibujado fuera del logo
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-in';
-      if (logoScaleX < 0 || logoScaleY < 0) {
-        ctx.translate(logoScaleX < 0 ? renderWidth : 0, logoScaleY < 0 ? renderHeight : 0);
-        ctx.scale(logoScaleX < 0 ? -1 : 1, logoScaleY < 0 ? -1 : 1);
-      }
-      ctx.drawImage(logoImg, 0, 0, renderWidth, renderHeight);
       ctx.restore();
     }
 
@@ -239,6 +246,7 @@ export default function Customizer({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Definimos un tamaño de visualización estándar para el paso 3 del asistente
     const designWidth = 520;
     const designHeight = 520;
 
@@ -250,6 +258,7 @@ export default function Customizer({
     stageRef.current = stage;
     if (onStageReady) onStageReady(stage);
 
+    // Aplicar escala y centrado iniciales de zoom si se provee
     const initialZoom = zoom || 1;
     stage.scale({ x: initialZoom, y: initialZoom });
     stage.position({
@@ -261,8 +270,18 @@ export default function Customizer({
     stage.add(layer);
     layerRef.current = layer;
 
+    // Crear grupos para mantener el orden de apilamiento de manera estricta
     const bgGroup = new Konva.Group();
-    const logoGroup = new Konva.Group();
+    const logoGroup = new Konva.Group({
+      x: 0,
+      y: 0,
+      width: designWidth,
+      height: designHeight,
+      globalCompositeOperation: 'source-atop', // Nivel 2: Recorte por GPU sobre la prenda base
+    });
+    logoGroupRef.current = logoGroup;
+
+    // Grupo para guías de personalización (Bordado/Estampado)
     const guidesGroup = new Konva.Group({ listening: false });
 
     layer.add(bgGroup);
@@ -283,6 +302,7 @@ export default function Customizer({
     layer.add(tr);
     transformerRef.current = tr;
 
+    // Cargar la prenda base (el fondo del canvas queda transparente)
     const prendaImgObj = new window.Image();
     prendaImgObj.crossOrigin = 'anonymous';
     prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
@@ -305,6 +325,7 @@ export default function Customizer({
       const x = (designWidth - newWidth) / 2;
       const y = (designHeight - newHeight) / 2;
 
+      // Guardar dimensiones globales de la prenda
       garmentRectRef.current = { x, y, width: newWidth, height: newHeight };
 
       const bg = new Konva.Image({
@@ -313,10 +334,11 @@ export default function Customizer({
         image: prendaImgObj,
         width: newWidth,
         height: newHeight,
-        listening: false,
+        listening: false, // Estático
       });
       bgGroup.add(bg);
 
+      // Procesar y cachear el mapa de sombras
       let cachedMask = shadowMaskCacheRef.current[prendaImgObj.src];
       if (!cachedMask) {
         cachedMask = processShadowMask(prendaImgObj, prendaImgObj.src);
@@ -325,6 +347,7 @@ export default function Customizer({
 
       if (cachedMask) {
         garmentLuminanceRef.current = cachedMask.luminance;
+
         const shadowOverlayObj = new window.Image();
         shadowOverlayObj.crossOrigin = 'anonymous';
         shadowOverlayObj.src = cachedMask.url;
@@ -356,25 +379,27 @@ export default function Customizer({
       layer.draw();
     };
 
+    // Cargar el logo del cliente si está disponible
     if (logoUrl) {
-      const logoImg = new window.Image();
-      logoImg.crossOrigin = 'anonymous';
-      logoImg.src = getProxiedUrl(logoUrl);
-      logoImg.onerror = () => {
-        if (logoImg.crossOrigin === 'anonymous') {
-          logoImg.removeAttribute('crossorigin');
-          logoImg.src = getProxiedUrl(logoUrl);
+      const logoImgObj = new window.Image();
+      logoImgObj.crossOrigin = 'anonymous';
+      logoImgObj.src = getProxiedUrl(logoUrl);
+      logoImgObj.onerror = () => {
+        if (logoImgObj.crossOrigin === 'anonymous') {
+          logoImgObj.removeAttribute('crossorigin');
+          logoImgObj.src = getProxiedUrl(logoUrl);
         }
       };
-      logoImg.onload = () => {
+      logoImgObj.onload = () => {
         const scaleXRatio = designWidth / (canvasWidth || 500);
         const scaleYRatio = designHeight / (canvasHeight || 500);
 
         let initialWidth = width;
         let initialHeight = height;
 
+        // Autocalcular usando la proporción de la imagen solo si no se enviaron dimensiones válidas
         if (!initialWidth || !initialHeight || initialWidth <= 0 || initialHeight <= 0) {
-          const logoRatio = logoImg.width / logoImg.height;
+          const logoRatio = logoImgObj.width / logoImgObj.height;
           if (logoRatio > 1) {
             initialWidth = 120;
             initialHeight = 120 / logoRatio;
@@ -396,8 +421,9 @@ export default function Customizer({
           }
         }
 
-        logoImgObjRef.current = logoImg;
+        logoImgObjRef.current = logoImgObj;
 
+        // Inicializar resolución inicial del canvas local
         const canvas = logoCanvasRef.current;
         if (canvas) {
           canvas.width = Math.ceil(initialWidth * scaleXRatio);
@@ -412,7 +438,6 @@ export default function Customizer({
           height: initialHeight * scaleYRatio,
           rotation: rotation || 0,
           draggable: !readOnly,
-          globalCompositeOperation: 'source-atop',
         });
 
         logoRef.current = logo;
@@ -421,6 +446,7 @@ export default function Customizer({
           tr.nodes([logo]);
         }
 
+        // Si showEmbroideryArea está activo, crear el rectángulo indicador
         if (showEmbroideryArea) {
           const embRect = new Konva.Rect({
             x: logo.x(),
@@ -428,7 +454,7 @@ export default function Customizer({
             width: logo.width(),
             height: logo.height(),
             rotation: logo.rotation(),
-            stroke: '#f97316',
+            stroke: '#f97316', // naranja
             strokeWidth: 2,
             dash: [6, 4],
             fill: 'rgba(249, 115, 22, 0.08)',
@@ -438,6 +464,7 @@ export default function Customizer({
           guidesGroup.add(embRect);
         }
 
+        // Dibujar el canvas por primera vez con el logo
         redrawLogoCanvas();
         if (logoCanvasRef.current) {
           logo.image(logoCanvasRef.current);
@@ -461,38 +488,35 @@ export default function Customizer({
         };
 
         if (!readOnly) {
-          const handleInteractiveUpdate = () => {
-            if (embroideryRectRef.current) {
-              embroideryRectRef.current.x(logo.x());
-              embroideryRectRef.current.y(logo.y());
-              embroideryRectRef.current.width(logo.width() * logo.scaleX());
-              embroideryRectRef.current.height(logo.height() * logo.scaleY());
-              embroideryRectRef.current.rotation(logo.rotation());
-            }
+          // Escuchar eventos de arrastre y redimensionamiento para actualizar la máscara en tiempo real
+          logo.on('dragstart transformstart', () => {
+            isLogoInteractingRef.current = true;
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
               logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
-          };
+          });
 
-          logo.on('dragmove transform', handleInteractiveUpdate);
+          logo.on('dragmove transform', () => {
+            redrawLogoCanvas();
+            if (logoCanvasRef.current) {
+              logo.image(logoCanvasRef.current);
+            }
+            layer.batchDraw();
+          });
 
           logo.on('dragend transformend', () => {
+            isLogoInteractingRef.current = false;
+
+            // Normalizar: incorporar la escala del Transformer en width/height y resetear scaleX/scaleY a 1
+            // Esto evita que la escala se acumule en futuros drags o transforms
             const finalWidth = logo.width() * logo.scaleX();
             const finalHeight = logo.height() * logo.scaleY();
             logo.width(finalWidth);
             logo.height(finalHeight);
             logo.scaleX(1);
             logo.scaleY(1);
-
-            if (embroideryRectRef.current) {
-              embroideryRectRef.current.x(logo.x());
-              embroideryRectRef.current.y(logo.y());
-              embroideryRectRef.current.width(finalWidth);
-              embroideryRectRef.current.height(finalHeight);
-              embroideryRectRef.current.rotation(logo.rotation());
-            }
 
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
@@ -521,15 +545,11 @@ export default function Customizer({
 
     return () => {
       if (onStageReady) onStageReady(null);
-      logoRef.current = null;
-      embroideryRectRef.current = null;
-      transformerRef.current = null;
-      layerRef.current = null;
-      stageRef.current = null;
       stage.destroy();
     };
   }, [baseGarmentUrl, logoUrl, canvasWidth, canvasHeight]);
 
+  // Alternar la visibilidad de la capa de simulación de sombras en tiempo real
   useEffect(() => {
     redrawLogoCanvas();
     if (logoRef.current && logoCanvasRef.current) {
@@ -540,6 +560,7 @@ export default function Customizer({
     }
   }, [isSimulationActive]);
 
+  // Manejar el cambio dinámico del nivel de zoom del canvas sin reconstruir el stage
   useEffect(() => {
     if (!stageRef.current) return;
     const stage = stageRef.current;
@@ -554,6 +575,7 @@ export default function Customizer({
     stage.batchDraw();
   }, [zoom]);
 
+  // Restablecer la traslación de la prenda al cambiar de vista o de nivel de zoom
   useEffect(() => {
     const el = containerRef.current;
     if (el) {
@@ -562,61 +584,67 @@ export default function Customizer({
     }
   }, [zoom, baseGarmentUrl]);
 
+  // Actualizar la posición, tamaño y rotación del logo de forma reactiva cuando cambien las props del padre
   useEffect(() => {
     const logo = logoRef.current;
-    if (!logo || typeof logo.getStage !== 'function' || !logo.getStage() || !stageRef.current || !layerRef.current) return;
+    if (!logo || !stageRef.current || !layerRef.current) return;
 
-    try {
-      const scaleXRatio = stageRef.current.width() / (canvasWidth || 500);
-      const scaleYRatio = stageRef.current.height() / (canvasHeight || 500);
+    // Calcular la relación de escala de coordenadas (Pantalla vs. Base de datos)
+    const scaleXRatio = stageRef.current.width() / (canvasWidth || 500);
+    const scaleYRatio = stageRef.current.height() / (canvasHeight || 500);
 
-      if (positionX !== undefined) logo.x(positionX * scaleXRatio);
-      if (positionY !== undefined) logo.y(positionY * scaleYRatio);
-      if (width !== undefined) logo.width(width * scaleXRatio);
-      if (height !== undefined) logo.height(height * scaleYRatio);
-      if (rotation !== undefined) logo.rotation(rotation);
+    // Aplicar los nuevos valores al nodo de Konva
+    if (positionX !== undefined) logo.x(positionX * scaleXRatio);
+    if (positionY !== undefined) logo.y(positionY * scaleYRatio);
+    if (width !== undefined) logo.width(width * scaleXRatio);
+    if (height !== undefined) logo.height(height * scaleYRatio);
+    if (rotation !== undefined) logo.rotation(rotation);
 
-      logo.scaleX(1);
-      logo.scaleY(1);
+    // Siempre resetear la escala a 1 para evitar acumulación con el Transformer
+    logo.scaleX(1);
+    logo.scaleY(1);
 
-      const tr = transformerRef.current;
-      if (tr && typeof tr.forceUpdate === 'function' && tr.nodes().length > 0) {
-        tr.forceUpdate();
-      }
-
-      const embRect = embroideryRectRef.current;
-      if (embRect && typeof embRect.getStage === 'function' && embRect.getStage()) {
-        if (positionX !== undefined) embRect.x(positionX * scaleXRatio);
-        if (positionY !== undefined) embRect.y(positionY * scaleYRatio);
-        if (width !== undefined) embRect.width(width * scaleXRatio);
-        if (height !== undefined) embRect.height(height * scaleYRatio);
-        if (rotation !== undefined) embRect.rotation(rotation);
-      }
-
-      redrawLogoCanvas();
-      if (logoCanvasRef.current) {
-        logo.image(logoCanvasRef.current);
-      }
-      
-      layerRef.current.batchDraw();
-    } catch (e) {
+    // Forzar actualización del transformador visual si está seleccionado
+    const tr = transformerRef.current;
+    if (tr && tr.nodes().length > 0) {
+      tr.forceUpdate();
     }
+
+    // Actualizar el rectángulo del área de bordado de forma reactiva si existe
+    const embRect = embroideryRectRef.current;
+    if (embRect) {
+      if (positionX !== undefined) embRect.x(positionX * scaleXRatio);
+      if (positionY !== undefined) embRect.y(positionY * scaleYRatio);
+      if (width !== undefined) embRect.width(width * scaleXRatio);
+      if (height !== undefined) embRect.height(height * scaleYRatio);
+      if (rotation !== undefined) embRect.rotation(rotation);
+    }
+
+    // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
+    redrawLogoCanvas();
+    if (logoCanvasRef.current) {
+      logo.image(logoCanvasRef.current);
+    }
+    
+    layerRef.current.batchDraw();
   }, [positionX, positionY, width, height, rotation, canvasWidth, canvasHeight]);
 
+  // Manejar el cambio de modo (selección vs mano)
   useEffect(() => {
     if (!stageRef.current || !layerRef.current || !transformerRef.current) return;
     const stage = stageRef.current;
     const tr = transformerRef.current;
     const isPan = mode === 'pan';
 
+    // Desactivar el arrastre de Konva (usaremos arrastre DOM del canvas completo)
     stage.draggable(false);
     stage.container().style.cursor = isPan ? 'grab' : 'default';
 
     if (isPan) {
-      tr.nodes([]);
+      tr.nodes([]); // Deseleccionar
     } else {
       if (logoRef.current) {
-        tr.nodes([logoRef.current]);
+        tr.nodes([logoRef.current]); // Re-seleccionar el logo si existe
       }
     }
 
@@ -626,6 +654,7 @@ export default function Customizer({
     layerRef.current.draw();
   }, [mode]);
 
+  // Controlador de arrastre del elemento HTML del Canvas completo (Mano / Pan)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;

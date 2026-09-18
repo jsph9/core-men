@@ -24,6 +24,22 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("merchant_sidebar_collapsed");
+    if (saved !== null) {
+      setIsCollapsed(saved === "true");
+    }
+  }, []);
+
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("merchant_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   // Validación de seguridad: Buscamos al usuario y verificamos que sea Vendedor
   const { data: me, isLoading } = useQuery<{ name: string; email: string; role: string }>({
@@ -56,13 +72,31 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
   const pageTitle = activeRoute ? activeRoute.label : "Panel de Vendedor";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div 
+      className="min-h-screen bg-slate-50 flex"
+      style={{ '--sidebar-width': isCollapsed ? '5rem' : '16rem' } as React.CSSProperties}
+    >
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 transition-all border-r border-slate-800 fixed h-full z-40">
-        <div className="h-16 flex items-center px-6 bg-slate-950/50 border-b border-slate-800 shrink-0">
-          <Link href="/gestion-cotizaciones" className="text-xl font-extrabold tracking-tight text-white">
-            Core<span className="text-blue-500">Men</span> <span className="text-sm font-medium text-slate-500 ml-1">Ventas</span>
-          </Link>
+      <aside 
+        className={`hidden md:flex flex-col bg-slate-900 text-slate-300 transition-all duration-300 border-r border-slate-800 fixed h-full z-40 ${
+          isCollapsed ? "w-20" : "w-64"
+        }`}
+      >
+        <div className={`h-16 flex items-center bg-slate-950/50 border-b border-slate-800 shrink-0 transition-all duration-300 ${isCollapsed ? "justify-center px-2" : "px-4 gap-3"}`}>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none shrink-0"
+            title={isCollapsed ? "Expandir barra lateral" : "Contraer barra lateral"}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {!isCollapsed && (
+            <Link href="/gestion-cotizaciones" className="text-xl font-extrabold tracking-tight text-white truncate transition-opacity duration-200">
+              Core<span className="text-blue-500">Men</span> <span className="text-sm font-medium text-slate-500 ml-1">Ventas</span>
+            </Link>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-800">
@@ -72,23 +106,32 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
               <Link 
                 key={item.href} 
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors ${
+                title={isCollapsed ? item.label : undefined}
+                className={`flex items-center rounded-lg font-medium transition-colors ${
+                  isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
+                } ${
                   isActive 
                     ? "bg-blue-600 text-white" 
                     : "hover:bg-slate-800 hover:text-white"
                 }`}
               >
-                <item.icon className={`h-5 w-5 ${isActive ? "text-white" : "text-slate-400"}`} />
-                {item.label}
+                <item.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800 bg-slate-950/30">
-          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
-            <LogOut className="h-5 w-5" />
-            <span className="font-medium">Cerrar Sesión</span>
+        <div className="p-3 border-t border-slate-800 bg-slate-950/30">
+          <button 
+            onClick={handleLogout} 
+            title={isCollapsed ? "Cerrar Sesión" : undefined}
+            className={`flex items-center w-full rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ${
+              isCollapsed ? "justify-center p-2.5" : "gap-3 px-3 py-2.5"
+            }`}
+          >
+            <LogOut className="h-5 w-5 shrink-0" />
+            {!isCollapsed && <span className="font-medium truncate">Cerrar Sesión</span>}
           </button>
         </div>
       </aside>
@@ -113,7 +156,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
           {NAV_ITEMS.map((item) => (
             <Link 
               key={item.href} 
-              href={item.href}
+              href={item.href} 
               onClick={() => setIsMobileMenuOpen(false)}
               className={`flex items-center gap-3 px-3 py-3 rounded-lg font-medium ${
                 pathname?.startsWith(item.href) ? "bg-blue-600 text-white" : "hover:bg-slate-800 hover:text-white"
@@ -127,7 +170,7 @@ export default function MerchantLayout({ children }: { children: React.ReactNode
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col md:ml-64 min-w-0 transition-all">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${isCollapsed ? "md:ml-20" : "md:ml-64"}`}>
         {/* Topbar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-3">
