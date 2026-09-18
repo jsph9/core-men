@@ -193,11 +193,9 @@ export default function Customizer({
     prendaImgObj.crossOrigin = 'anonymous';
     prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
     prendaImgObj.onerror = () => {
-      if (prendaImgObj.crossOrigin === 'anonymous') {
-        prendaImgObj.removeAttribute('crossorigin');
-        prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
-      } else if (prendaImgObj.src !== window.location.origin + '/prenda-base.png') {
-        prendaImgObj.src = '/prenda-base.png';
+      const fallback = '/prenda-base.png';
+      if (!prendaImgObj.src.includes(fallback)) {
+        prendaImgObj.src = fallback;
       }
     };
 
@@ -223,11 +221,11 @@ export default function Customizer({
       });
       bgGroup.add(bg);
 
-      // Procesar y cachear el mapa de sombras solo si se cargó con CORS permitido
-      let cachedMask = shadowMaskCacheRef.current[baseGarmentUrl || ''];
-      if (!cachedMask && baseGarmentUrl && prendaImgObj.crossOrigin === 'anonymous') {
-        cachedMask = processShadowMask(prendaImgObj, baseGarmentUrl);
-        shadowMaskCacheRef.current[baseGarmentUrl] = cachedMask;
+      // Procesar y cachear el mapa de sombras
+      let cachedMask = shadowMaskCacheRef.current[prendaImgObj.src];
+      if (!cachedMask) {
+        cachedMask = processShadowMask(prendaImgObj, prendaImgObj.src);
+        shadowMaskCacheRef.current[prendaImgObj.src] = cachedMask;
       }
 
       if (cachedMask) {
