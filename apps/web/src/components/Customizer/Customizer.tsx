@@ -587,46 +587,50 @@ export default function Customizer({
   // Actualizar la posición, tamaño y rotación del logo de forma reactiva cuando cambien las props del padre
   useEffect(() => {
     const logo = logoRef.current;
-    if (!logo || !stageRef.current || !layerRef.current) return;
+    if (!logo || typeof logo.getStage !== 'function' || !logo.getStage() || !stageRef.current || !layerRef.current) return;
 
-    // Calcular la relación de escala de coordenadas (Pantalla vs. Base de datos)
-    const scaleXRatio = stageRef.current.width() / (canvasWidth || 500);
-    const scaleYRatio = stageRef.current.height() / (canvasHeight || 500);
+    try {
+      // Calcular la relación de escala de coordenadas (Pantalla vs. Base de datos)
+      const scaleXRatio = stageRef.current.width() / (canvasWidth || 500);
+      const scaleYRatio = stageRef.current.height() / (canvasHeight || 500);
 
-    // Aplicar los nuevos valores al nodo de Konva
-    if (positionX !== undefined) logo.x(positionX * scaleXRatio);
-    if (positionY !== undefined) logo.y(positionY * scaleYRatio);
-    if (width !== undefined) logo.width(width * scaleXRatio);
-    if (height !== undefined) logo.height(height * scaleYRatio);
-    if (rotation !== undefined) logo.rotation(rotation);
+      // Aplicar los nuevos valores al nodo de Konva
+      if (positionX !== undefined) logo.x(positionX * scaleXRatio);
+      if (positionY !== undefined) logo.y(positionY * scaleYRatio);
+      if (width !== undefined) logo.width(width * scaleXRatio);
+      if (height !== undefined) logo.height(height * scaleYRatio);
+      if (rotation !== undefined) logo.rotation(rotation);
 
-    // Siempre resetear la escala a 1 para evitar acumulación con el Transformer
-    logo.scaleX(1);
-    logo.scaleY(1);
+      // Siempre resetear la escala a 1 para evitar acumulación con el Transformer
+      logo.scaleX(1);
+      logo.scaleY(1);
 
-    // Forzar actualización del transformador visual si está seleccionado
-    const tr = transformerRef.current;
-    if (tr && tr.nodes().length > 0) {
-      tr.forceUpdate();
+      // Forzar actualización del transformador visual si está seleccionado
+      const tr = transformerRef.current;
+      if (tr && typeof tr.forceUpdate === 'function' && tr.nodes().length > 0) {
+        tr.forceUpdate();
+      }
+
+      // Actualizar el rectángulo del área de bordado de forma reactiva si existe
+      const embRect = embroideryRectRef.current;
+      if (embRect && typeof embRect.getStage === 'function' && embRect.getStage()) {
+        if (positionX !== undefined) embRect.x(positionX * scaleXRatio);
+        if (positionY !== undefined) embRect.y(positionY * scaleYRatio);
+        if (width !== undefined) embRect.width(width * scaleXRatio);
+        if (height !== undefined) embRect.height(height * scaleYRatio);
+        if (rotation !== undefined) embRect.rotation(rotation);
+      }
+
+      // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
+      redrawLogoCanvas();
+      if (logoCanvasRef.current) {
+        logo.image(logoCanvasRef.current);
+      }
+      
+      layerRef.current.batchDraw();
+    } catch (e) {
+      // Ignorar errores si Konva destruyó el nodo internamente
     }
-
-    // Actualizar el rectángulo del área de bordado de forma reactiva si existe
-    const embRect = embroideryRectRef.current;
-    if (embRect) {
-      if (positionX !== undefined) embRect.x(positionX * scaleXRatio);
-      if (positionY !== undefined) embRect.y(positionY * scaleYRatio);
-      if (width !== undefined) embRect.width(width * scaleXRatio);
-      if (height !== undefined) embRect.height(height * scaleYRatio);
-      if (rotation !== undefined) embRect.rotation(rotation);
-    }
-
-    // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
-    redrawLogoCanvas();
-    if (logoCanvasRef.current) {
-      logo.image(logoCanvasRef.current);
-    }
-    
-    layerRef.current.batchDraw();
   }, [positionX, positionY, width, height, rotation, canvasWidth, canvasHeight]);
 
   // Manejar el cambio de modo (selección vs mano)
