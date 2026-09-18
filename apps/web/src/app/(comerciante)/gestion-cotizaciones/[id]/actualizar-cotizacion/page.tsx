@@ -137,7 +137,7 @@ export default function ActualizarCotizacion() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeDesignIdx, setActiveDesignIdx] = useState(0);
   const [openSection, setOpenSection] = useState<string | null>("Upload Design");
-  const [activeBgUrl, setActiveBgUrl] = useState<string>("https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/whitewall.jpg");
+  const [activeBgUrl, setActiveBgUrl] = useState<string>("/backgrounds/white.jpg");
   const [zoom, setZoom] = useState<number>(1.0);
   const [mode, setMode] = useState<"select" | "pan">("select");
   const [isSimulationActive, setIsSimulationActive] = useState<boolean>(true);
@@ -1371,9 +1371,9 @@ export default function ActualizarCotizacion() {
                         <div className="px-5 pb-5 border-t border-slate-100 pt-4">
                           <div className="grid grid-cols-3 gap-3">
                             {[
-                              { name: "Oscuro", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/blackwall.jpg" },
-                              { name: "Gris", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/greywall.jpg" },
-                              { name: "Blanco", url: "https://amazon-s3-coremen-bucket.s3.us-east-1.amazonaws.com/imagenes-coremen/whitewall.jpg" },
+                              { name: "Oscuro", url: "/backgrounds/dark.jpg" },
+                              { name: "Gris", url: "/backgrounds/grey.jpg" },
+                              { name: "Blanco", url: "/backgrounds/white.jpg" },
                             ].map((bg) => {
                               const isSelected = activeBgUrl === bg.url;
                               return (
