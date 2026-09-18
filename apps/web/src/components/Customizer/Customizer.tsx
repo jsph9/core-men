@@ -491,10 +491,20 @@ export default function Customizer({
           // Escuchar eventos de arrastre y redimensionamiento para actualizar la máscara en tiempo real
           logo.on('dragstart transformstart', () => {
             isLogoInteractingRef.current = true;
-            handleInteractiveUpdate();
+            redrawLogoCanvas();
+            if (logoCanvasRef.current) {
+              logo.image(logoCanvasRef.current);
+            }
+            layer.batchDraw();
           });
 
-          logo.on('dragmove transform', handleInteractiveUpdate);
+          logo.on('dragmove transform', () => {
+            redrawLogoCanvas();
+            if (logoCanvasRef.current) {
+              logo.image(logoCanvasRef.current);
+            }
+            layer.batchDraw();
+          });
 
           logo.on('dragend transformend', () => {
             isLogoInteractingRef.current = false;
