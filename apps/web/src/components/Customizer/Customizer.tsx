@@ -211,7 +211,7 @@ export default function Customizer({
     ctx.restore();
 
     // 2. Aplicar el mapa de sombras de la prenda usando source-atop (solo si no se está interactuando)
-    if (isSimulationActiveRef.current && shadowOverlayObjRef.current) {
+    if (isSimulationActiveRef.current && shadowOverlayObjRef.current && !isLogoInteractingRef.current) {
       ctx.save();
       ctx.globalCompositeOperation = 'source-atop';
 
@@ -491,20 +491,10 @@ export default function Customizer({
           // Escuchar eventos de arrastre y redimensionamiento para actualizar la máscara en tiempo real
           logo.on('dragstart transformstart', () => {
             isLogoInteractingRef.current = true;
-            redrawLogoCanvas();
-            if (logoCanvasRef.current) {
-              logo.image(logoCanvasRef.current);
-            }
-            layer.batchDraw();
+            handleInteractiveUpdate();
           });
 
-          logo.on('dragmove transform', () => {
-            redrawLogoCanvas();
-            if (logoCanvasRef.current) {
-              logo.image(logoCanvasRef.current);
-            }
-            layer.batchDraw();
-          });
+          logo.on('dragmove transform', handleInteractiveUpdate);
 
           logo.on('dragend transformend', () => {
             isLogoInteractingRef.current = false;
