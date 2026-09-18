@@ -60,6 +60,8 @@ const processShadowMask = (img: HTMLImageElement, url: string): { url: string; l
     const avgB = count > 0 ? totalB / count : 128;
     const Y = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
 
+    const deadzone = 12; // Tolerancia para considerar un área como "plana" (sin pliegues ni brillos)
+
     for (let i = 0; i < data.length; i += 4) {
       const a = data[i + 3];
       if (a > 0) {
@@ -69,18 +71,23 @@ const processShadowMask = (img: HTMLImageElement, url: string): { url: string; l
         const pixelY = 0.299 * r + 0.587 * g + 0.114 * b;
         const diff = pixelY - Y;
 
-        if (diff < 0) {
-          const intensity = Math.min(255, Math.abs(diff) * 2.5);
+        if (Math.abs(diff) <= deadzone) {
+          // Áreas planas: completamente transparentes para no desteñir el logo
+          data[i + 3] = 0;
+        } else if (diff < -deadzone) {
+          // Pliegues/Sombras oscuras
+          const intensity = Math.min(255, (Math.abs(diff) - deadzone) * 3.5);
           data[i] = 0;
           data[i + 1] = 0;
           data[i + 2] = 0;
           data[i + 3] = Math.round((a / 255) * intensity);
         } else {
-          const intensity = Math.min(255, diff * 3.0);
+          // Brillos/Iluminación
+          const intensity = Math.min(255, (diff - deadzone) * 4.0);
           data[i] = 255;
           data[i + 1] = 255;
           data[i + 2] = 255;
-          data[i + 3] = Math.round((a / 255) * intensity);
+          data[i + 3] = Math.round((a / 255) * Math.min(intensity, 180)); // Limitar brillo máximo
         }
       }
     }
@@ -195,21 +202,14 @@ export default function Customizer({
     ctx.drawImage(logoImg, 0, 0, renderWidth, renderHeight);
     ctx.restore();
 
-    // 2. Aplicar el mapa de sombras de la prenda usando multiply/screen
+    // 2. Aplicar el mapa de sombras de la prenda usando hard-light
     if (isSimulationActiveRef.current && shadowOverlayObjRef.current) {
       ctx.save();
 
-      const Y = garmentLuminanceRef.current;
-      if (Y > 170) {
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.8;
-      } else if (Y > 80) {
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.5;
-      } else {
-        ctx.globalCompositeOperation = 'screen';
-        ctx.globalAlpha = 0.65;
-      }
+      // hard-light permite aplicar tanto oscurecimiento (sombras negras) como iluminación (brillos blancos)
+      // independientemente del color del logo original, siendo perfecto para logos negros o blancos.
+      ctx.globalCompositeOperation = 'hard-light';
+      ctx.globalAlpha = 0.85;
 
       const transform = new Konva.Transform(logoNode.getTransform().getMatrix().slice());
       transform.invert();
