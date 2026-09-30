@@ -467,7 +467,7 @@ export default function Customizer({
         // Dibujar el canvas por primera vez con el logo
         redrawLogoCanvas();
         if (logoCanvasRef.current) {
-          logo.image(logoCanvasRef.current);
+          logo.image(undefined); logo.image(logoCanvasRef.current);
         }
 
         const notifyChange = () => {
@@ -493,7 +493,7 @@ export default function Customizer({
             isLogoInteractingRef.current = true;
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
-              logo.image(logoCanvasRef.current);
+              logo.image(undefined); logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
           });
@@ -501,7 +501,7 @@ export default function Customizer({
           logo.on('dragmove transform', () => {
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
-              logo.image(logoCanvasRef.current);
+              logo.image(undefined); logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
           });
@@ -520,7 +520,7 @@ export default function Customizer({
 
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
-              logo.image(logoCanvasRef.current);
+              logo.image(undefined); logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
             notifyChange();
@@ -624,7 +624,8 @@ export default function Customizer({
       // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
       redrawLogoCanvas();
       if (logoCanvasRef.current) {
-        logo.image(logoCanvasRef.current);
+        logo.image(undefined);
+        logo.image(undefined); logo.image(logoCanvasRef.current);
       }
       
       layerRef.current.batchDraw();
