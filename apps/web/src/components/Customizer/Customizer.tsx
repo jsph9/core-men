@@ -305,11 +305,11 @@ export default function Customizer({
     // Cargar la prenda base (el fondo del canvas queda transparente)
     const prendaImgObj = new window.Image();
     prendaImgObj.crossOrigin = 'anonymous';
-    prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
+
     prendaImgObj.onerror = () => {
       if (prendaImgObj.crossOrigin === 'anonymous') {
         prendaImgObj.removeAttribute('crossorigin');
-        prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
+    
       } else if (prendaImgObj.src !== window.location.origin + '/prenda-base.png') {
         prendaImgObj.src = '/prenda-base.png';
       }
@@ -352,11 +352,11 @@ export default function Customizer({
 
         const shadowOverlayObj = new window.Image();
         shadowOverlayObj.crossOrigin = 'anonymous';
-        shadowOverlayObj.src = cachedMask.url;
+
         shadowOverlayObj.onerror = () => {
           if (shadowOverlayObj.crossOrigin === 'anonymous') {
             shadowOverlayObj.removeAttribute('crossorigin');
-            shadowOverlayObj.src = cachedMask.url;
+    
           }
         };
         shadowOverlayObj.onload = () => {
@@ -368,6 +368,8 @@ export default function Customizer({
           tr.moveToTop();
           layer.draw();
         };
+
+        shadowOverlayObj.src = cachedMask.url;
       } else {
         shadowOverlayObjRef.current = null;
         redrawLogoCanvas();
@@ -381,15 +383,17 @@ export default function Customizer({
       layer.draw();
     };
 
+    prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
+
     // Cargar el logo del cliente si está disponible
     if (logoUrl) {
       const logoImgObj = new window.Image();
       logoImgObj.crossOrigin = 'anonymous';
-      logoImgObj.src = getProxiedUrl(logoUrl);
+
       logoImgObj.onerror = () => {
         if (logoImgObj.crossOrigin === 'anonymous') {
-          logoImgObj.removeAttribute('crossorigin');
-          logoImgObj.src = getProxiedUrl(logoUrl);
+          logoImgObj.removeAttribute('crossorigin'); logoImgObj.src = getProxiedUrl(logoUrl);
+    
         }
       };
       logoImgObj.onload = () => {
@@ -537,6 +541,8 @@ export default function Customizer({
 
         layer.draw();
       };
+
+      logoImgObj.src = getProxiedUrl(logoUrl);
     }
 
     stage.on('click tap', (e) => {
