@@ -307,9 +307,11 @@ export default function Customizer({
     prendaImgObj.crossOrigin = 'anonymous';
     prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
     prendaImgObj.onerror = () => {
-      const fallback = '/prenda-base.png';
-      if (!prendaImgObj.src.includes(fallback)) {
-        prendaImgObj.src = fallback;
+      if (prendaImgObj.crossOrigin === 'anonymous') {
+        prendaImgObj.removeAttribute('crossorigin');
+        prendaImgObj.src = getProxiedUrl(baseGarmentUrl) || '/prenda-base.png';
+      } else if (prendaImgObj.src !== window.location.origin + '/prenda-base.png') {
+        prendaImgObj.src = '/prenda-base.png';
       }
     };
 
@@ -338,11 +340,11 @@ export default function Customizer({
       });
       bgGroup.add(bg);
 
-      // Procesar y cachear el mapa de sombras
-      let cachedMask = shadowMaskCacheRef.current[prendaImgObj.src];
-      if (!cachedMask) {
-        cachedMask = processShadowMask(prendaImgObj, prendaImgObj.src);
-        shadowMaskCacheRef.current[prendaImgObj.src] = cachedMask;
+      // Procesar y cachear el mapa de sombras solo si se cargó con CORS permitido
+      let cachedMask = shadowMaskCacheRef.current[baseGarmentUrl || ''];
+      if (!cachedMask && baseGarmentUrl && prendaImgObj.crossOrigin === 'anonymous') {
+        cachedMask = processShadowMask(prendaImgObj, baseGarmentUrl);
+        shadowMaskCacheRef.current[baseGarmentUrl] = cachedMask;
       }
 
       if (cachedMask) {
@@ -467,7 +469,7 @@ export default function Customizer({
         // Dibujar el canvas por primera vez con el logo
         redrawLogoCanvas();
         if (logoCanvasRef.current) {
-          logo.image(undefined); logo.image(logoCanvasRef.current);
+          logo.image(logoCanvasRef.current);
         }
 
         const notifyChange = () => {
@@ -493,7 +495,7 @@ export default function Customizer({
             isLogoInteractingRef.current = true;
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
-              logo.image(undefined); logo.image(logoCanvasRef.current);
+              logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
           });
@@ -501,7 +503,7 @@ export default function Customizer({
           logo.on('dragmove transform', () => {
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
-              logo.image(undefined); logo.image(logoCanvasRef.current);
+              logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
           });
@@ -520,7 +522,7 @@ export default function Customizer({
 
             redrawLogoCanvas();
             if (logoCanvasRef.current) {
-              logo.image(undefined); logo.image(logoCanvasRef.current);
+              logo.image(logoCanvasRef.current);
             }
             layer.batchDraw();
             notifyChange();
@@ -624,13 +626,12 @@ export default function Customizer({
       // Redibujar el canvas local con los nuevos tamaños y sombras aplicadas
       redrawLogoCanvas();
       if (logoCanvasRef.current) {
-        logo.image(undefined);
-        logo.image(undefined); logo.image(logoCanvasRef.current);
+        logo.image(logoCanvasRef.current);
       }
       
       layerRef.current.batchDraw();
     } catch (e) {
-      // Ignorar errores si Konva destruyó el nodo internamente
+      // ignore
     }
   }, [positionX, positionY, width, height, rotation, canvasWidth, canvasHeight]);
 
