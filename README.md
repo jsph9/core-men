@@ -108,4 +108,5 @@ npm run dev
 
 ## Video
 
-> 🎥 *[https://github.com/user-attachments/assets/2e4dd13e-eb06-4ef5-a8a7-208962ea602a]*
+https://github.com/user-attachments/assets/2e4dd13e-eb06-4ef5-a8a7-208962ea602a
+
