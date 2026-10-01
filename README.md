@@ -108,4 +108,4 @@ npm run dev
 
 ## Video
 
-> 🎥 *[Agregar aquí GIF o video corto (15-30s) mostrando: catálogo → personalización de prenda en tiempo real → checkout]*
+> 🎥 *[https://github.com/user-attachments/assets/2e4dd13e-eb06-4ef5-a8a7-208962ea602a]*
